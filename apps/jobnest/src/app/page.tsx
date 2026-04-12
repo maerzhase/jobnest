@@ -7,18 +7,14 @@ export default function Home() {
       <div className="flex items-start justify-between gap-6">
         <div className="max-w-2xl space-y-4">
           <p className="text-muted-foreground text-sm font-medium uppercase tracking-[0.24em]">
-            pnpm + Turbo template
+            Privacy-first job tracker
           </p>
           <h1 className="text-foreground text-4xl font-semibold tracking-tight sm:text-5xl">
-            Start with a publishable UI package and a private app wired
-            together.
+            🐣 JobNest
           </h1>
           <p className="text-muted-foreground text-lg leading-8">
-            This app imports a Button from{" "}
-            <code className="bg-muted text-foreground rounded px-1.5 py-0.5 text-[0.95em]">
-              @acme/ui
-            </code>{" "}
-            using a workspace dependency and shared stylesheet export.
+            Track roles, companies, notes, and progress in one calm place,
+            with your job search data staying on your device.
           </p>
         </div>
 

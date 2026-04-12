@@ -1,7 +1,97 @@
-# Tauri + React + Typescript
+# 🐣 JobNest App
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+This app is the desktop client for JobNest, a privacy-first job application tracker built to keep your data on your device.
 
-## Recommended IDE Setup
+It combines a Next.js frontend with a Tauri desktop shell:
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- Next.js powers the UI and app routes
+- Tauri wraps the frontend in a lightweight native desktop app
+- Rust handles the native layer in `src-tauri`
+
+## Architecture
+
+The app is organized around two parts:
+
+- `src/app` contains the Next.js application UI
+- `src-tauri` contains the Tauri 2 configuration, Rust entrypoint, and desktop bundling setup
+
+In development:
+
+- Next.js runs a local dev server on `http://localhost:3000`
+- Tauri opens a native window that points to that dev server
+
+In production:
+
+- Next.js builds a static export to `out`
+- Tauri uses that exported frontend as the bundled desktop UI
+
+This setup gives us a fast product workflow:
+
+- React and Next.js for the interface
+- Tauri for desktop packaging and native capabilities
+- local-first foundations without requiring a hosted backend
+
+## Prerequisites
+
+Before running the app locally, make sure you have:
+
+- Node.js 20 or newer
+- `pnpm` 10 or newer
+- Rust and Cargo installed
+- Tauri system dependencies for your operating system
+
+Tauri has a short platform setup guide here:
+
+- [Tauri prerequisites](https://tauri.app/start/prerequisites/)
+
+## Install
+
+From the repo root:
+
+```bash
+pnpm install
+```
+
+## Development
+
+Run the frontend only:
+
+```bash
+pnpm --filter jobnest dev
+```
+
+Run the desktop app with Tauri:
+
+```bash
+pnpm --filter jobnest tauri dev
+```
+
+The Tauri dev command starts the Next.js app first through `beforeDevCommand` and then opens the native desktop shell.
+
+## Build
+
+Build the frontend workspace:
+
+```bash
+pnpm --filter jobnest build
+```
+
+Build the desktop app bundle:
+
+```bash
+pnpm --filter jobnest tauri build
+```
+
+## Important Files
+
+- `package.json` - app scripts and frontend dependencies
+- `next.config.ts` - static export setup for Tauri
+- `src-tauri/tauri.conf.json` - desktop app configuration
+- `src-tauri/src/lib.rs` - Rust-side Tauri application entrypoint
+
+## Notes
+
+- This app uses `pnpm`, not npm or yarn
+- Tauri is configured to load the dev app from `localhost:3000`
+- production assets are bundled from the `out` directory
+- shared components come from the workspace UI package

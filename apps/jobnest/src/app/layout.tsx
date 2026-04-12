@@ -3,9 +3,9 @@ import { ThemeProvider } from "../components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Monorepo Template",
+  title: "🐣 JobNest",
   description:
-    "Opinionated pnpm + Turbo starter with a publishable UI package.",
+    "A privacy-first job application tracker that keeps your data local.",
 };
 
 export default function RootLayout({
