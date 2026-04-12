@@ -1,0 +1,6 @@
+@layer base {
+  body {
+    color: var(--foreground);
+    background: var(--page-background);
+  }
+}

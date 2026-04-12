@@ -1,0 +1,16 @@
+node_modules
+.pnpm-debug.log*
+.turbo
+.next
+.vercel
+.output
+.cache
+build
+dist
+coverage
+storybook-static
+.env*
+.DS_Store
+*.tsbuildinfo
+packages/*/dist/
+packages/*/.turbo/

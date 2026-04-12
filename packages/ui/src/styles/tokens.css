@@ -1,0 +1,56 @@
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  body {
+    --background: #ffffff;
+    --foreground: #000000;
+    --card: rgb(255 255 255 / 80%);
+    --card-foreground: #000000;
+    --muted: rgb(0 0 0 / 0.04);
+    --muted-foreground: rgb(0 0 0 / 0.62);
+    --border: rgb(0 0 0 / 0.12);
+    --input: rgb(0 0 0 / 0.12);
+    --ring: rgb(0 0 0 / 0.45);
+    --page-background:
+      radial-gradient(circle at top, rgb(0 0 0 / 0.035), transparent 42%),
+      linear-gradient(180deg, #f7f7f7 0%, #ffffff 100%);
+    color-scheme: light;
+  }
+
+  @variant dark {
+    body {
+      --background: #000000;
+      --foreground: #ffffff;
+      --card: rgb(255 255 255 / 0.04);
+      --card-foreground: #ffffff;
+      --muted: rgb(255 255 255 / 0.08);
+      --muted-foreground: rgb(255 255 255 / 0.68);
+      --border: rgb(255 255 255 / 0.14);
+      --input: rgb(255 255 255 / 0.14);
+      --ring: rgb(255 255 255 / 0.55);
+      --page-background:
+        radial-gradient(
+          circle at top,
+          rgb(255 255 255 / 0.08),
+          transparent 34%
+        ),
+        radial-gradient(
+          circle at bottom right,
+          rgb(255 255 255 / 0.04),
+          transparent 26%
+        ),
+        linear-gradient(180deg, #050505 0%, #000000 100%);
+      color-scheme: dark;
+    }
+  }
+}

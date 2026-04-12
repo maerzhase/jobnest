@@ -1,0 +1,32 @@
+{
+  "name": "monorepo-template",
+  "version": "0.0.0",
+  "devDependencies": {
+    "@biomejs/biome": "2.2.0",
+    "@changesets/cli": "2.30.0",
+    "syncpack": "14.3.0",
+    "turbo": "2.9.5"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "changeset": "changeset",
+    "check": "pnpm syncpack:lint && turbo run lint format typecheck",
+    "dev": "turbo run dev",
+    "fix": "pnpm syncpack:fix && turbo run lint:fix format:fix",
+    "format": "turbo run format",
+    "format:fix": "turbo run format:fix",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "release": "pnpm build && changeset publish",
+    "syncpack:fix": "syncpack fix && pnpm syncpack:format",
+    "syncpack:format": "syncpack format && pnpm exec biome format --write package.json packages/ui/package.json apps/web/package.json",
+    "syncpack:lint": "syncpack lint",
+    "typecheck": "turbo run typecheck",
+    "version-packages": "changeset version"
+  }
+}

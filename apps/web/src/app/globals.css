@@ -1,0 +1,15 @@
+@import "./variants.css";
+@import "tailwindcss";
+@import "@acme/ui/theme.css";
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    min-height: 100vh;
+    background: var(--page-background);
+  }
+}
