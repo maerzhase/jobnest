@@ -129,13 +129,11 @@ export function SettingsScreen() {
 
     try {
       const exportData = await invoke("export_app_data");
-
-      // Create a blob with the exported data
       const dataStr = JSON.stringify(exportData, null, 2);
+
+      // Create blob and trigger browser's save dialog
       const blob = new Blob([dataStr], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-
-      // Create a link and trigger download
       const link = document.createElement("a");
       link.href = url;
       link.download = `jobnest-backup-${new Date().toISOString().split("T")[0]}.json`;
