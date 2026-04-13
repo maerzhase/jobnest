@@ -14,7 +14,7 @@ use crate::models::{
     AppSettings, Application, ApplicationListItem, Company, Contact, CreateApplicationInput,
     CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
     CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
-    UpdateApplicationStatusInput,
+    UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
 };
 
 const ENTITY_APPLICATION: &str = "application";
@@ -362,6 +362,216 @@ impl Database {
             created_at: current.get("created_at"),
             updated_at: now,
         })
+    }
+
+    pub async fn update_tracked_application(
+        &self,
+        input: UpdateTrackedApplicationInput,
+    ) -> AppResult<ApplicationListItem> {
+        let current = sqlx::query(
+            r#"
+            SELECT
+                a.id AS application_id,
+                a.role_id,
+                a.status,
+                a.applied_at,
+                a.first_response_at,
+                a.deadline_at,
+                a.salary_expectation,
+                a.salary_offer,
+                a.last_activity_at,
+                a.priority,
+                a.archived_at,
+                a.created_at,
+                a.updated_at,
+                r.id AS role_id_full,
+                r.company_id,
+                c.id AS company_id_full
+            FROM applications a
+            INNER JOIN roles r ON r.id = a.role_id
+            INNER JOIN companies c ON c.id = r.company_id
+            WHERE a.id = ?
+            "#,
+        )
+        .bind(&input.application_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let now = now_utc();
+        let next_status = normalize_application_status(&input.status)?;
+        let applied_at = current
+            .get::<Option<String>, _>("applied_at")
+            .or_else(|| should_set_applied_at(&next_status).then(|| now.clone()));
+        let first_response_at = current
+            .get::<Option<String>, _>("first_response_at")
+            .or_else(|| should_set_first_response_at(&next_status).then(|| now.clone()));
+
+        sqlx::query("UPDATE companies SET name = ?, updated_at = ? WHERE id = ?")
+            .bind(input.company_name.trim())
+            .bind(&now)
+            .bind(current.get::<String, _>("company_id"))
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query("UPDATE roles SET title = ?, source_url = ?, updated_at = ? WHERE id = ?")
+            .bind(input.role_title.trim())
+            .bind(trim_to_option(Some(input.job_post_url)))
+            .bind(&now)
+            .bind(current.get::<String, _>("role_id"))
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE applications
+            SET status = ?, applied_at = ?, first_response_at = ?, salary_expectation = ?, salary_offer = ?, last_activity_at = ?, updated_at = ?
+            WHERE id = ?
+            "#,
+        )
+        .bind(&next_status)
+        .bind(&applied_at)
+        .bind(&first_response_at)
+        .bind(trim_to_option(input.salary_expectation))
+        .bind(trim_to_option(input.salary_offer))
+        .bind(&now)
+        .bind(&now)
+        .bind(&input.application_id)
+        .execute(&self.pool)
+        .await?;
+
+        let previous_status: String = current.get("status");
+        if previous_status != next_status {
+            sqlx::query(
+                "INSERT INTO stage_events (id, application_id, from_status, to_status, changed_at, source) VALUES (?, ?, ?, ?, ?, ?)",
+            )
+            .bind(new_id())
+            .bind(&input.application_id)
+            .bind(previous_status)
+            .bind(&next_status)
+            .bind(&now)
+            .bind("user")
+            .execute(&self.pool)
+            .await?;
+        }
+
+        let existing_note_id = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT id
+            FROM notes
+            WHERE application_id = ?
+            ORDER BY updated_at DESC, created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(&input.application_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        match (existing_note_id, trim_to_option(input.notes)) {
+            (Some(note_id), Some(body)) => {
+                sqlx::query("UPDATE notes SET body = ?, updated_at = ? WHERE id = ?")
+                    .bind(body)
+                    .bind(&now)
+                    .bind(&note_id)
+                    .execute(&self.pool)
+                    .await?;
+                self.upsert_search_document_for_note(&note_id).await?;
+            }
+            (Some(note_id), None) => {
+                self.delete_search_document(ENTITY_NOTE, &note_id).await?;
+                sqlx::query("DELETE FROM notes WHERE id = ?")
+                    .bind(&note_id)
+                    .execute(&self.pool)
+                    .await?;
+            }
+            (None, Some(body)) => {
+                self.create_note(CreateNoteInput {
+                    application_id: input.application_id.clone(),
+                    body,
+                    kind: Some("general".to_owned()),
+                })
+                .await?;
+            }
+            (None, None) => {}
+        }
+
+        let company_id: String = current.get("company_id");
+        let role_id: String = current.get("role_id");
+        self.upsert_search_document_for_company(&company_id).await?;
+        self.upsert_search_document_for_role(&role_id).await?;
+        self.upsert_search_document_for_application(&input.application_id)
+            .await?;
+        self.get_application_list_item(&input.application_id).await
+    }
+
+    pub async fn delete_tracked_application(&self, application_id: &str) -> AppResult<()> {
+        let current = sqlx::query(
+            r#"
+            SELECT
+                a.role_id,
+                r.company_id
+            FROM applications a
+            INNER JOIN roles r ON r.id = a.role_id
+            WHERE a.id = ?
+            "#,
+        )
+        .bind(application_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let role_id: String = current.get("role_id");
+        let company_id: String = current.get("company_id");
+
+        let note_ids = sqlx::query_scalar::<_, String>("SELECT id FROM notes WHERE application_id = ?")
+            .bind(application_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        for note_id in &note_ids {
+            self.delete_search_document(ENTITY_NOTE, note_id).await?;
+        }
+
+        self.delete_search_document(ENTITY_APPLICATION, application_id)
+            .await?;
+
+        sqlx::query("DELETE FROM applications WHERE id = ?")
+            .bind(application_id)
+            .execute(&self.pool)
+            .await?;
+
+        let role_application_count =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM applications WHERE role_id = ?")
+                .bind(&role_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        if role_application_count == 0 {
+            self.delete_search_document(ENTITY_ROLE, &role_id).await?;
+            sqlx::query("DELETE FROM roles WHERE id = ?")
+                .bind(&role_id)
+                .execute(&self.pool)
+                .await?;
+        } else {
+            self.upsert_search_document_for_role(&role_id).await?;
+        }
+
+        let company_role_count =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM roles WHERE company_id = ?")
+                .bind(&company_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        if company_role_count == 0 {
+            self.delete_search_document(ENTITY_COMPANY, &company_id).await?;
+            sqlx::query("DELETE FROM companies WHERE id = ?")
+                .bind(&company_id)
+                .execute(&self.pool)
+                .await?;
+        } else {
+            self.upsert_search_document_for_company(&company_id).await?;
+        }
+
+        Ok(())
     }
 
     pub async fn create_contact(&self, input: CreateContactInput) -> AppResult<Contact> {
@@ -960,6 +1170,31 @@ impl Database {
         Ok(())
     }
 
+    async fn delete_search_document(&self, entity_type: &'static str, entity_id: &str) -> AppResult<()> {
+        let document_id = sqlx::query_scalar::<_, String>(
+            "SELECT id FROM search_documents WHERE entity_type = ? AND entity_id = ?",
+        )
+        .bind(entity_type)
+        .bind(entity_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(document_id) = document_id {
+            sqlx::query("DELETE FROM search_index WHERE doc_id = ?")
+                .bind(&document_id)
+                .execute(&self.pool)
+                .await?;
+        }
+
+        sqlx::query("DELETE FROM search_documents WHERE entity_type = ? AND entity_id = ?")
+            .bind(entity_type)
+            .bind(entity_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
     async fn get_application_list_item(
         &self,
         application_id: &str,
@@ -1292,5 +1527,80 @@ mod tests {
         .expect("stage events");
 
         assert_eq!(stage_events, 3);
+    }
+
+    #[tokio::test]
+    async fn tracked_application_can_be_updated_and_deleted() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        let saved = db
+            .create_tracked_application(CreateTrackedApplicationInput {
+                job_post_url: "https://jobs.example.com/designer".to_owned(),
+                company_name: "Acme".to_owned(),
+                role_title: "Designer".to_owned(),
+                salary_expectation: Some("EUR 60k".to_owned()),
+                salary_offer: None,
+                status: Some(APPLICATION_STATUS_SAVED.to_owned()),
+                applied_at: None,
+                first_response_at: None,
+                notes: Some("Initial note".to_owned()),
+            })
+            .await
+            .expect("saved application");
+
+        let updated = db
+            .update_tracked_application(UpdateTrackedApplicationInput {
+                application_id: saved.id.clone(),
+                job_post_url: "https://jobs.example.com/senior-designer".to_owned(),
+                company_name: "Acme Labs".to_owned(),
+                role_title: "Senior Designer".to_owned(),
+                salary_expectation: Some("USD 80k".to_owned()),
+                salary_offer: Some("USD 90k".to_owned()),
+                status: APPLICATION_STATUS_INTERVIEW.to_owned(),
+                notes: Some("Updated note".to_owned()),
+            })
+            .await
+            .expect("updated application");
+
+        assert_eq!(updated.company_name, "Acme Labs");
+        assert_eq!(updated.role_title, "Senior Designer");
+        assert_eq!(
+            updated.job_post_url.as_deref(),
+            Some("https://jobs.example.com/senior-designer")
+        );
+        assert_eq!(updated.salary_expectation.as_deref(), Some("USD 80k"));
+        assert_eq!(updated.salary_offer.as_deref(), Some("USD 90k"));
+        assert_eq!(updated.status, APPLICATION_STATUS_INTERVIEW);
+        assert_eq!(updated.notes.as_deref(), Some("Updated note"));
+
+        db.delete_tracked_application(&saved.id)
+            .await
+            .expect("delete application");
+
+        let applications = db.list_applications().await.expect("list applications");
+        assert!(applications.is_empty());
+
+        let company_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM companies")
+            .fetch_one(&db.pool)
+            .await
+            .expect("company count");
+        let role_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM roles")
+            .fetch_one(&db.pool)
+            .await
+            .expect("role count");
+        let app_doc_count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM search_documents WHERE entity_type = ?",
+        )
+        .bind(ENTITY_APPLICATION)
+        .fetch_one(&db.pool)
+        .await
+        .expect("app doc count");
+
+        assert_eq!(company_count, 0);
+        assert_eq!(role_count, 0);
+        assert_eq!(app_doc_count, 0);
     }
 }

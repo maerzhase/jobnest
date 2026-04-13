@@ -178,6 +178,19 @@ pub struct UpdateApplicationStatusInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct UpdateTrackedApplicationInput {
+    pub application_id: String,
+    pub job_post_url: String,
+    pub company_name: String,
+    pub role_title: String,
+    pub salary_expectation: Option<String>,
+    pub salary_offer: Option<String>,
+    pub status: String,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTrackedApplicationInput {
     pub job_post_url: String,
     pub company_name: String,

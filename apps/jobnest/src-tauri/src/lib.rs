@@ -165,6 +165,8 @@ pub fn run() {
             commands::create_application,
             commands::create_tracked_application,
             commands::update_application_status,
+            commands::update_tracked_application,
+            commands::delete_tracked_application,
             commands::create_contact,
             commands::create_note,
             commands::search,

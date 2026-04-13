@@ -1,5 +1,14 @@
+export { cn } from "./lib/cn";
 export type { ButtonProps } from "./components/button";
 export { Button } from "./components/button";
+export { AlertDialog } from "./components/alert-dialog";
+export { AlertDialogCancelButton } from "./components/alert-dialog";
+export { AlertDialogContent } from "./components/alert-dialog";
+export { AlertDialogDescriptionText } from "./components/alert-dialog";
+export { AlertDialogFooter } from "./components/alert-dialog";
+export { AlertDialogHeader } from "./components/alert-dialog";
+export { AlertDialogTitleText } from "./components/alert-dialog";
+export { AlertDialogTriggerButton } from "./components/alert-dialog";
 export { Dialog } from "./components/dialog";
 export { DialogCloseButton } from "./components/dialog";
 export { DialogContent } from "./components/dialog";

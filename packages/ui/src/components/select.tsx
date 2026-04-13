@@ -21,19 +21,25 @@ export interface SelectTriggerButtonProps
   extends Omit<SelectTrigger.Props, "className"> {
   className?: string;
   placeholder?: ReactNode;
+  invalid?: boolean;
 }
 
 export function SelectTriggerButton({
   children,
   className,
   placeholder,
+  invalid,
   ...props
 }: SelectTriggerButtonProps): JSX.Element {
   return (
     <BaseSelect.Trigger
       {...props}
       className={cn(
-        "flex h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm transition-[border-color,box-shadow] outline-none focus-visible:border-foreground focus-visible:ring-3 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60 data-[popup-open]:border-foreground",
+        "flex h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border bg-background px-3 text-sm text-foreground shadow-sm transition-[border-color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-60",
+        invalid
+          ? "border-red-500/50 focus-visible:border-red-600 focus-visible:ring-red-500/25"
+          : "border-input focus-visible:border-foreground focus-visible:ring-ring/25",
+        "focus-visible:ring-3 data-[popup-open]:border-foreground",
         className,
       )}
     >

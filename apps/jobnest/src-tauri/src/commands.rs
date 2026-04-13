@@ -7,6 +7,7 @@ use crate::{
         CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
         CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
         UpdateAppSettingsInput, UpdateApplicationStatusInput,
+        UpdateTrackedApplicationInput,
     },
     AppState,
 };
@@ -67,6 +68,30 @@ pub async fn update_application_status(
     state
         .db
         .update_application_status(input)
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn update_tracked_application(
+    input: UpdateTrackedApplicationInput,
+    state: State<'_, AppState>,
+) -> Result<ApplicationListItem, String> {
+    state
+        .db
+        .update_tracked_application(input)
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_tracked_application(
+    application_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state
+        .db
+        .delete_tracked_application(&application_id)
         .await
         .map_err(|err| err.to_string())
 }
