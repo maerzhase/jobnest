@@ -7,7 +7,7 @@
     "core:window:allow-close",
     "dialog:allow-save",
     "dialog:allow-open",
-    "fs:allow-write",
-    "fs:allow-read"
+    "fs:allow-read",
+    "fs:write-all"
   ]
 }
