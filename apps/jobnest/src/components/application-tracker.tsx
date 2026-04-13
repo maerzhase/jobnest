@@ -438,6 +438,7 @@ export function ApplicationTracker() {
             >
               <Input
                 autoComplete="url"
+                autoCorrect="off"
                 invalid={Boolean(errors.jobPostUrl)}
                 placeholder="https://jobs.example.com/role"
                 {...register("jobPostUrl")}
