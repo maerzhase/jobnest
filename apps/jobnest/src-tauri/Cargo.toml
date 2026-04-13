@@ -19,7 +19,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
+tauri-plugin-opener = { version = "2", optional = true }
 tauri-plugin-dialog = { version = "2", optional = true }
 tauri-plugin-fs = { version = "2", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
@@ -33,7 +33,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 [features]
 default = ["tauri-plugins"]
-tauri-plugins = ["tauri-plugin-dialog", "tauri-plugin-fs"]
+tauri-plugins = ["tauri-plugin-opener", "tauri-plugin-dialog", "tauri-plugin-fs"]
 
 [dev-dependencies]
 tempfile = "3"
