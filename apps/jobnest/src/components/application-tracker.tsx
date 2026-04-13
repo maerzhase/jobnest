@@ -311,58 +311,67 @@ export function ApplicationTracker() {
             </p>
           </div>
         ) : (
-          <ul className="grid gap-3">
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {applications.map((application) => (
               <li
-                className="rounded-md border border-border bg-background/70"
+                className="group rounded-lg border border-border bg-background/70 transition-all hover:border-foreground/30 hover:shadow-md"
                 key={application.id}
               >
                 <button
-                  className="w-full px-4 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="w-full px-4 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   onClick={() => openEditDialog(application)}
                   type="button"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <h3 className="text-base font-semibold">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-semibold leading-tight truncate">
                         {application.roleTitle}
                       </h3>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-xs text-muted-foreground truncate mt-1">
                         {application.companyName}
                       </p>
                     </div>
-                    <span className="bg-muted inline-flex rounded-md px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  </div>
+
+                  <div className="mb-3">
+                    <span className={cn(
+                      "inline-flex rounded-sm px-2 py-1 text-xs font-semibold uppercase tracking-wide",
+                      getStatusStyles(application.status)
+                    )}>
                       {formatStatusLabel(application.status)}
                     </span>
                   </div>
-                  <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
+
+                  <div className="space-y-2 text-xs text-muted-foreground">
                     {application.salaryExpectation || application.salaryOffer ? (
-                      <p>
+                      <p className="line-clamp-1">
                         {[
                           application.salaryExpectation
-                            ? `Expectation: ${application.salaryExpectation}`
+                            ? `${application.salaryExpectation}`
                             : null,
                           application.salaryOffer
-                            ? `Offer: ${application.salaryOffer}`
+                            ? `${application.salaryOffer}`
                             : null,
                         ]
                           .filter(Boolean)
-                          .join(" · ")}
+                          .join(" / ")}
                       </p>
                     ) : null}
-                    <p>{getTimelineLabel(application)}</p>
-                    {application.notes ? <p>Notes: {application.notes}</p> : null}
+                    <p className="line-clamp-1">{getTimelineLabel(application)}</p>
+                    {application.notes ? (
+                      <p className="line-clamp-2">{application.notes}</p>
+                    ) : null}
                   </div>
                 </button>
                 {application.jobPostUrl ? (
-                  <div className="px-4 pb-4">
+                  <div className="px-4 pb-3 pt-1">
                     <a
-                      className="text-sm text-foreground underline underline-offset-4"
+                      className="text-xs font-medium text-foreground/70 hover:text-foreground transition-colors"
                       href={application.jobPostUrl}
                       rel="noreferrer"
                       target="_blank"
                     >
-                      Open job post
+                      Open post →
                     </a>
                   </div>
                 ) : null}
@@ -764,3 +773,23 @@ function normalizeStatus(value: string): ApplicationStatus {
     ? (value as ApplicationStatus)
     : "saved";
 }
+
+function getStatusStyles(status: string): string {
+  const baseStyles = "bg-opacity-10";
+
+  switch (status) {
+    case "saved":
+      return "bg-blue-500/10 text-blue-700 dark:text-blue-300";
+    case "applied":
+      return "bg-purple-500/10 text-purple-700 dark:text-purple-300";
+    case "interview":
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    case "offer":
+      return "bg-green-500/10 text-green-700 dark:text-green-300";
+    case "rejected":
+      return "bg-red-500/10 text-red-700 dark:text-red-300";
+    default:
+      return "bg-gray-500/10 text-gray-700 dark:text-gray-300";
+  }
+}
+

@@ -792,7 +792,17 @@ impl Database {
             FROM applications a
             INNER JOIN roles r ON r.id = a.role_id
             INNER JOIN companies c ON c.id = r.company_id
-            ORDER BY a.updated_at DESC, a.created_at DESC
+            ORDER BY
+                CASE a.status
+                    WHEN 'offer' THEN 0
+                    WHEN 'interview' THEN 1
+                    WHEN 'applied' THEN 2
+                    WHEN 'saved' THEN 3
+                    WHEN 'rejected' THEN 4
+                    ELSE 5
+                END,
+                a.updated_at DESC,
+                a.created_at DESC
             "#,
         )
         .fetch_all(&self.pool)
