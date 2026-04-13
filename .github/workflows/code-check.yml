@@ -28,7 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Rust tests
-        run: cargo test --lib --no-default-features --manifest-path apps/jobnest/src-tauri/Cargo.toml
+        run: cargo test --manifest-path apps/jobnest/src-tauri/crates/jobnest-db/Cargo.toml
 
       - name: Code check
         run: pnpm run check
