@@ -21,6 +21,23 @@
       "csp": null
     }
   },
+  "plugins": {
+    "dialog": {
+      "allow-ask": true,
+      "allow-message": true,
+      "allow-save": true,
+      "allow-open": true
+    },
+    "fs": {
+      "allow-read": true,
+      "allow-write": true,
+      "allow-mkdir": true,
+      "allow-remove": true,
+      "allow-rename": true,
+      "allow-exists": true,
+      "allow-copy-file": true
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",

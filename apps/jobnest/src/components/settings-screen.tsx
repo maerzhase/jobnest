@@ -18,6 +18,8 @@ import {
   SelectValueText,
 } from "@acme/ui";
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { startTransition, useCallback, useEffect, useState } from "react";
@@ -131,20 +133,28 @@ export function SettingsScreen() {
       const exportData = await invoke("export_app_data");
       const dataStr = JSON.stringify(exportData, null, 2);
 
-      // Create blob and trigger browser's save dialog
-      const blob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `jobnest-backup-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Open save dialog
+      const filePath = await save({
+        defaultPath: `jobnest-backup-${new Date().toISOString().split("T")[0]}.json`,
+        filters: [
+          {
+            name: "JSON",
+            extensions: ["json"],
+          },
+        ],
+      });
 
-      setSaveMessage("Data exported successfully.");
+      if (filePath) {
+        // Write file to chosen location
+        await writeTextFile(filePath, dataStr);
+        setSaveMessage("Data exported successfully.");
+      }
     } catch (error) {
-      setSettingsError(getErrorMessage(error));
+      // Only show error if it's not a dialog cancellation
+      const errorMsg = getErrorMessage(error);
+      if (errorMsg && !errorMsg.toLowerCase().includes("cancelled")) {
+        setSettingsError(errorMsg);
+      }
     } finally {
       setIsExporting(false);
     }
