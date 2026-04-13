@@ -174,7 +174,9 @@ pub fn run() {
             commands::list_applications,
             commands::get_app_settings,
             commands::update_app_settings,
-            commands::reset_app_data
+            commands::reset_app_data,
+            commands::export_app_data,
+            commands::import_app_data
         ]);
 
     let app = builder

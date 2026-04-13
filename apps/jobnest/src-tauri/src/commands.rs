@@ -185,5 +185,28 @@ pub async fn reset_app_data(state: State<'_, AppState>) -> Result<AppSettings, S
         .map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+pub async fn export_app_data(
+    state: State<'_, AppState>,
+) -> Result<crate::models::ExportData, String> {
+    state
+        .db
+        .export_app_data()
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn import_app_data(
+    input: crate::models::ImportDataInput,
+    state: State<'_, AppState>,
+) -> Result<crate::models::ExportData, String> {
+    state
+        .db
+        .import_app_data(input)
+        .await
+        .map_err(|err| err.to_string())
+}
+
 #[allow(dead_code)]
 fn _assert_send_sync(_: &Database) {}

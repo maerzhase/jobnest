@@ -208,3 +208,67 @@ pub struct CreateTrackedApplicationInput {
 pub struct UpdateAppSettingsInput {
     pub preferred_currency: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Task {
+    pub id: String,
+    pub application_id: String,
+    pub title: String,
+    pub due_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub kind: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Attachment {
+    pub id: String,
+    pub application_id: String,
+    pub kind: String,
+    pub file_name: String,
+    pub file_path: String,
+    pub mime_type: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StageEvent {
+    pub id: String,
+    pub application_id: String,
+    pub from_status: Option<String>,
+    pub to_status: String,
+    pub changed_at: String,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportData {
+    pub companies: Vec<Company>,
+    pub roles: Vec<Role>,
+    pub applications: Vec<Application>,
+    pub contacts: Vec<Contact>,
+    pub notes: Vec<Note>,
+    pub tasks: Vec<Task>,
+    pub attachments: Vec<Attachment>,
+    pub stage_events: Vec<StageEvent>,
+    pub app_settings: AppSettings,
+    pub export_version: String,
+    pub exported_at: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImportDataInput {
+    pub companies: Vec<Company>,
+    pub roles: Vec<Role>,
+    pub applications: Vec<Application>,
+    pub contacts: Vec<Contact>,
+    pub notes: Vec<Note>,
+    pub tasks: Vec<Task>,
+    pub attachments: Vec<Attachment>,
+    pub stage_events: Vec<StageEvent>,
+    pub app_settings: Option<AppSettings>,
+}

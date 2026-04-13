@@ -893,6 +893,391 @@ impl Database {
         })
     }
 
+    pub async fn export_app_data(&self) -> AppResult<crate::models::ExportData> {
+        let now = now_utc();
+
+        let company_rows = sqlx::query(
+            "SELECT id, name, website, location, industry, created_at, updated_at FROM companies"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let companies = company_rows
+            .into_iter()
+            .map(|row| Company {
+                id: row.get("id"),
+                name: row.get("name"),
+                website: row.get("website"),
+                location: row.get("location"),
+                industry: row.get("industry"),
+                created_at: row.get("created_at"),
+                updated_at: row.get("updated_at"),
+            })
+            .collect();
+
+        let role_rows = sqlx::query(
+            "SELECT id, company_id, title, job_board, source_url, employment_type, location_text, salary_text, description, created_at, updated_at FROM roles"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let roles = role_rows
+            .into_iter()
+            .map(|row| Role {
+                id: row.get("id"),
+                company_id: row.get("company_id"),
+                title: row.get("title"),
+                job_board: row.get("job_board"),
+                source_url: row.get("source_url"),
+                employment_type: row.get("employment_type"),
+                location_text: row.get("location_text"),
+                salary_text: row.get("salary_text"),
+                description: row.get("description"),
+                created_at: row.get("created_at"),
+                updated_at: row.get("updated_at"),
+            })
+            .collect();
+
+        let application_rows = sqlx::query(
+            "SELECT id, role_id, status, applied_at, first_response_at, deadline_at, salary_expectation, salary_offer, last_activity_at, priority, archived_at, created_at, updated_at FROM applications"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let applications = application_rows
+            .into_iter()
+            .map(|row| Application {
+                id: row.get("id"),
+                role_id: row.get("role_id"),
+                status: row.get("status"),
+                applied_at: row.get("applied_at"),
+                first_response_at: row.get("first_response_at"),
+                deadline_at: row.get("deadline_at"),
+                salary_expectation: row.get("salary_expectation"),
+                salary_offer: row.get("salary_offer"),
+                last_activity_at: row.get("last_activity_at"),
+                priority: row.get("priority"),
+                archived_at: row.get("archived_at"),
+                created_at: row.get("created_at"),
+                updated_at: row.get("updated_at"),
+            })
+            .collect();
+
+        let contact_rows = sqlx::query(
+            "SELECT id, company_id, name, title, email, linkedin_url, notes, created_at, updated_at FROM contacts"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let contacts = contact_rows
+            .into_iter()
+            .map(|row| Contact {
+                id: row.get("id"),
+                company_id: row.get("company_id"),
+                name: row.get("name"),
+                title: row.get("title"),
+                email: row.get("email"),
+                linkedin_url: row.get("linkedin_url"),
+                notes: row.get("notes"),
+                created_at: row.get("created_at"),
+                updated_at: row.get("updated_at"),
+            })
+            .collect();
+
+        let note_rows = sqlx::query(
+            "SELECT id, application_id, body, kind, created_at, updated_at FROM notes"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let notes = note_rows
+            .into_iter()
+            .map(|row| Note {
+                id: row.get("id"),
+                application_id: row.get("application_id"),
+                body: row.get("body"),
+                kind: row.get("kind"),
+                created_at: row.get("created_at"),
+                updated_at: row.get("updated_at"),
+            })
+            .collect();
+
+        let task_rows = sqlx::query(
+            "SELECT id, application_id, title, due_at, completed_at, kind, created_at, updated_at FROM tasks"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let tasks = task_rows
+            .into_iter()
+            .map(|row| crate::models::Task {
+                id: row.get("id"),
+                application_id: row.get("application_id"),
+                title: row.get("title"),
+                due_at: row.get("due_at"),
+                completed_at: row.get("completed_at"),
+                kind: row.get("kind"),
+                created_at: row.get("created_at"),
+                updated_at: row.get("updated_at"),
+            })
+            .collect();
+
+        let attachment_rows = sqlx::query(
+            "SELECT id, application_id, kind, file_name, file_path, mime_type, created_at FROM attachments"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let attachments = attachment_rows
+            .into_iter()
+            .map(|row| crate::models::Attachment {
+                id: row.get("id"),
+                application_id: row.get("application_id"),
+                kind: row.get("kind"),
+                file_name: row.get("file_name"),
+                file_path: row.get("file_path"),
+                mime_type: row.get("mime_type"),
+                created_at: row.get("created_at"),
+            })
+            .collect();
+
+        let event_rows = sqlx::query(
+            "SELECT id, application_id, from_status, to_status, changed_at, source FROM stage_events"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let stage_events = event_rows
+            .into_iter()
+            .map(|row| crate::models::StageEvent {
+                id: row.get("id"),
+                application_id: row.get("application_id"),
+                from_status: row.get("from_status"),
+                to_status: row.get("to_status"),
+                changed_at: row.get("changed_at"),
+                source: row.get("source"),
+            })
+            .collect();
+
+        let app_settings = self.get_app_settings().await?;
+
+        Ok(crate::models::ExportData {
+            companies,
+            roles,
+            applications,
+            contacts,
+            notes,
+            tasks,
+            attachments,
+            stage_events,
+            app_settings,
+            export_version: "1.0".to_owned(),
+            exported_at: now,
+        })
+    }
+
+    pub async fn import_app_data(
+        &self,
+        data: crate::models::ImportDataInput,
+    ) -> AppResult<crate::models::ExportData> {
+        let now = now_utc();
+        let mut transaction = self.pool.begin().await?;
+
+        // Clear all data in dependency order
+        for statement in [
+            "DELETE FROM application_contacts",
+            "DELETE FROM attachments",
+            "DELETE FROM tasks",
+            "DELETE FROM stage_events",
+            "DELETE FROM notes",
+            "DELETE FROM contacts",
+            "DELETE FROM applications",
+            "DELETE FROM roles",
+            "DELETE FROM companies",
+            "DELETE FROM search_documents",
+            "DELETE FROM search_index",
+            "DELETE FROM app_settings",
+        ] {
+            sqlx::query(statement).execute(&mut *transaction).await?;
+        }
+
+        // Insert companies
+        for company in &data.companies {
+            sqlx::query(
+                "INSERT INTO companies (id, name, website, location, industry, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&company.id)
+            .bind(&company.name)
+            .bind(&company.website)
+            .bind(&company.location)
+            .bind(&company.industry)
+            .bind(&company.created_at)
+            .bind(&company.updated_at)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert roles
+        for role in &data.roles {
+            sqlx::query(
+                "INSERT INTO roles (id, company_id, title, job_board, source_url, employment_type, location_text, salary_text, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&role.id)
+            .bind(&role.company_id)
+            .bind(&role.title)
+            .bind(&role.job_board)
+            .bind(&role.source_url)
+            .bind(&role.employment_type)
+            .bind(&role.location_text)
+            .bind(&role.salary_text)
+            .bind(&role.description)
+            .bind(&role.created_at)
+            .bind(&role.updated_at)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert applications
+        for application in &data.applications {
+            sqlx::query(
+                "INSERT INTO applications (id, role_id, status, applied_at, first_response_at, deadline_at, salary_expectation, salary_offer, last_activity_at, priority, archived_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&application.id)
+            .bind(&application.role_id)
+            .bind(&application.status)
+            .bind(&application.applied_at)
+            .bind(&application.first_response_at)
+            .bind(&application.deadline_at)
+            .bind(&application.salary_expectation)
+            .bind(&application.salary_offer)
+            .bind(&application.last_activity_at)
+            .bind(&application.priority)
+            .bind(&application.archived_at)
+            .bind(&application.created_at)
+            .bind(&application.updated_at)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert contacts
+        for contact in &data.contacts {
+            sqlx::query(
+                "INSERT INTO contacts (id, company_id, name, title, email, linkedin_url, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&contact.id)
+            .bind(&contact.company_id)
+            .bind(&contact.name)
+            .bind(&contact.title)
+            .bind(&contact.email)
+            .bind(&contact.linkedin_url)
+            .bind(&contact.notes)
+            .bind(&contact.created_at)
+            .bind(&contact.updated_at)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert notes
+        for note in &data.notes {
+            sqlx::query(
+                "INSERT INTO notes (id, application_id, body, kind, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&note.id)
+            .bind(&note.application_id)
+            .bind(&note.body)
+            .bind(&note.kind)
+            .bind(&note.created_at)
+            .bind(&note.updated_at)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert tasks
+        for task in &data.tasks {
+            sqlx::query(
+                "INSERT INTO tasks (id, application_id, title, due_at, completed_at, kind, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&task.id)
+            .bind(&task.application_id)
+            .bind(&task.title)
+            .bind(&task.due_at)
+            .bind(&task.completed_at)
+            .bind(&task.kind)
+            .bind(&task.created_at)
+            .bind(&task.updated_at)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert attachments
+        for attachment in &data.attachments {
+            sqlx::query(
+                "INSERT INTO attachments (id, application_id, kind, file_name, file_path, mime_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&attachment.id)
+            .bind(&attachment.application_id)
+            .bind(&attachment.kind)
+            .bind(&attachment.file_name)
+            .bind(&attachment.file_path)
+            .bind(&attachment.mime_type)
+            .bind(&attachment.created_at)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert stage events
+        for event in &data.stage_events {
+            sqlx::query(
+                "INSERT INTO stage_events (id, application_id, from_status, to_status, changed_at, source) VALUES (?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&event.id)
+            .bind(&event.application_id)
+            .bind(&event.from_status)
+            .bind(&event.to_status)
+            .bind(&event.changed_at)
+            .bind(&event.source)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // Insert or update app settings
+        if let Some(settings) = &data.app_settings {
+            sqlx::query(
+                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)"
+            )
+            .bind(&settings.preferred_currency)
+            .bind(&settings.updated_at)
+            .execute(&mut *transaction)
+            .await?;
+        } else {
+            sqlx::query(
+                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)"
+            )
+            .bind(DEFAULT_PREFERRED_CURRENCY)
+            .bind(&now)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        transaction.commit().await?;
+
+        // Return the imported data
+        let app_settings = self.get_app_settings().await?;
+        Ok(crate::models::ExportData {
+            companies: data.companies,
+            roles: data.roles,
+            applications: data.applications,
+            contacts: data.contacts,
+            notes: data.notes,
+            tasks: data.tasks,
+            attachments: data.attachments,
+            stage_events: data.stage_events,
+            app_settings,
+            export_version: "1.0".to_owned(),
+            exported_at: now,
+        })
+    }
+
     async fn upsert_search_document_for_company(&self, company_id: &str) -> AppResult<()> {
         let row = sqlx::query(
             "SELECT name, website, location, industry, updated_at FROM companies WHERE id = ?",
@@ -1602,5 +1987,313 @@ mod tests {
         assert_eq!(company_count, 0);
         assert_eq!(role_count, 0);
         assert_eq!(app_doc_count, 0);
+    }
+
+    #[tokio::test]
+    async fn export_app_data_includes_all_tables() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        let company = db
+            .create_company(CreateCompanyInput {
+                name: "Test Company".to_owned(),
+                website: Some("https://test.example".to_owned()),
+                location: Some("Test City".to_owned()),
+                industry: Some("Tech".to_owned()),
+            })
+            .await
+            .expect("company");
+
+        let role = db
+            .create_role(CreateRoleInput {
+                company_id: company.id.clone(),
+                title: "Test Engineer".to_owned(),
+                job_board: Some("LinkedIn".to_owned()),
+                source_url: None,
+                employment_type: Some("Full-time".to_owned()),
+                location_text: Some("Remote".to_owned()),
+                salary_text: None,
+                description: None,
+            })
+            .await
+            .expect("role");
+
+        let application = db
+            .create_application(CreateApplicationInput {
+                role_id: role.id,
+                status: "applied".to_owned(),
+                applied_at: Some("2026-04-13T09:00:00Z".to_owned()),
+                first_response_at: None,
+                deadline_at: None,
+                salary_expectation: None,
+                salary_offer: None,
+                priority: Some(1),
+            })
+            .await
+            .expect("application");
+
+        let _contact = db
+            .create_contact(CreateContactInput {
+                company_id: company.id.clone(),
+                name: "John Doe".to_owned(),
+                title: Some("Recruiter".to_owned()),
+                email: Some("john@test.example".to_owned()),
+                linkedin_url: None,
+                notes: None,
+            })
+            .await
+            .expect("contact");
+
+        let _note = db
+            .create_note(CreateNoteInput {
+                application_id: application.id.clone(),
+                body: "Test note".to_owned(),
+                kind: Some("follow-up".to_owned()),
+            })
+            .await
+            .expect("note");
+
+        let export = db.export_app_data().await.expect("export");
+
+        assert_eq!(export.companies.len(), 1);
+        assert_eq!(export.companies[0].id, company.id);
+        assert_eq!(export.companies[0].name, "Test Company");
+
+        assert_eq!(export.roles.len(), 1);
+        assert_eq!(export.roles[0].title, "Test Engineer");
+
+        assert_eq!(export.applications.len(), 1);
+        assert_eq!(export.applications[0].status, "applied");
+
+        assert_eq!(export.contacts.len(), 1);
+        assert_eq!(export.contacts[0].name, "John Doe");
+
+        assert_eq!(export.notes.len(), 1);
+        assert_eq!(export.notes[0].body, "Test note");
+
+        assert_eq!(export.export_version, "1.0");
+        assert!(!export.exported_at.is_empty());
+    }
+
+    #[tokio::test]
+    async fn import_app_data_restores_all_data() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        // Create and export data
+        let company = db
+            .create_company(CreateCompanyInput {
+                name: "Import Test Co".to_owned(),
+                website: None,
+                location: None,
+                industry: None,
+            })
+            .await
+            .expect("company");
+
+        let role = db
+            .create_role(CreateRoleInput {
+                company_id: company.id.clone(),
+                title: "Developer".to_owned(),
+                job_board: None,
+                source_url: None,
+                employment_type: None,
+                location_text: None,
+                salary_text: None,
+                description: None,
+            })
+            .await
+            .expect("role");
+
+        let _application = db
+            .create_application(CreateApplicationInput {
+                role_id: role.id.clone(),
+                status: "saved".to_owned(),
+                applied_at: None,
+                first_response_at: None,
+                deadline_at: None,
+                salary_expectation: None,
+                salary_offer: None,
+                priority: None,
+            })
+            .await
+            .expect("application");
+
+        let export = db.export_app_data().await.expect("export");
+
+        // Clear database
+        db.reset_app_data().await.expect("reset");
+
+        // Verify data is cleared
+        let cleared_companies = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM companies")
+            .fetch_one(&db.pool)
+            .await
+            .expect("count");
+        assert_eq!(cleared_companies, 0);
+
+        // Import data
+        let imported = db
+            .import_app_data(crate::models::ImportDataInput {
+                companies: export.companies.clone(),
+                roles: export.roles.clone(),
+                applications: export.applications.clone(),
+                contacts: vec![],
+                notes: vec![],
+                tasks: vec![],
+                attachments: vec![],
+                stage_events: vec![],
+                app_settings: None,
+            })
+            .await
+            .expect("import");
+
+        // Verify data was restored
+        assert_eq!(imported.companies.len(), 1);
+        assert_eq!(imported.companies[0].name, "Import Test Co");
+        assert_eq!(imported.roles.len(), 1);
+        assert_eq!(imported.roles[0].title, "Developer");
+        assert_eq!(imported.applications.len(), 1);
+
+        // Verify in database
+        let companies = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM companies")
+            .fetch_one(&db.pool)
+            .await
+            .expect("company count");
+        assert_eq!(companies, 1);
+
+        let roles = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM roles")
+            .fetch_one(&db.pool)
+            .await
+            .expect("role count");
+        assert_eq!(roles, 1);
+    }
+
+    #[tokio::test]
+    async fn import_app_data_overwrites_existing_data() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        // Create initial data
+        db.create_company(CreateCompanyInput {
+            name: "Old Company".to_owned(),
+            website: None,
+            location: None,
+            industry: None,
+        })
+        .await
+        .expect("old company");
+
+        // Create different data to import
+        let company_to_import = crate::models::Company {
+            id: "new-id".to_owned(),
+            name: "New Company".to_owned(),
+            website: None,
+            location: None,
+            industry: None,
+            created_at: "2026-04-13T00:00:00Z".to_owned(),
+            updated_at: "2026-04-13T00:00:00Z".to_owned(),
+        };
+
+        // Import new data
+        db.import_app_data(crate::models::ImportDataInput {
+            companies: vec![company_to_import.clone()],
+            roles: vec![],
+            applications: vec![],
+            contacts: vec![],
+            notes: vec![],
+            tasks: vec![],
+            attachments: vec![],
+            stage_events: vec![],
+            app_settings: None,
+        })
+        .await
+        .expect("import");
+
+        // Verify old data is gone and new data exists
+        let all_companies = sqlx::query_scalar::<_, String>("SELECT name FROM companies")
+            .fetch_all(&db.pool)
+            .await
+            .expect("companies");
+
+        assert_eq!(all_companies.len(), 1);
+        assert_eq!(all_companies[0], "New Company");
+    }
+
+    #[tokio::test]
+    async fn export_and_import_preserves_relationships() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        // Create linked data
+        let company = db
+            .create_company(CreateCompanyInput {
+                name: "Linked Co".to_owned(),
+                website: None,
+                location: None,
+                industry: None,
+            })
+            .await
+            .expect("company");
+
+        let role = db
+            .create_role(CreateRoleInput {
+                company_id: company.id.clone(),
+                title: "Engineer".to_owned(),
+                job_board: None,
+                source_url: None,
+                employment_type: None,
+                location_text: None,
+                salary_text: None,
+                description: None,
+            })
+            .await
+            .expect("role");
+
+        let _application = db
+            .create_application(CreateApplicationInput {
+                role_id: role.id.clone(),
+                status: "applied".to_owned(),
+                applied_at: None,
+                first_response_at: None,
+                deadline_at: None,
+                salary_expectation: None,
+                salary_offer: None,
+                priority: None,
+            })
+            .await
+            .expect("application");
+
+        // Export and import
+        let export = db.export_app_data().await.expect("export");
+        db.reset_app_data().await.expect("reset");
+
+        db.import_app_data(crate::models::ImportDataInput {
+            companies: export.companies.clone(),
+            roles: export.roles.clone(),
+            applications: export.applications.clone(),
+            contacts: vec![],
+            notes: vec![],
+            tasks: vec![],
+            attachments: vec![],
+            stage_events: vec![],
+            app_settings: None,
+        })
+        .await
+        .expect("import");
+
+        // Verify relationships are intact
+        let imported_role = &export.roles[0];
+        let imported_app = &export.applications[0];
+
+        assert_eq!(imported_role.company_id, company.id);
+        assert_eq!(imported_app.role_id, role.id);
     }
 }
