@@ -20,22 +20,23 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { startTransition, useEffect, useEffectEvent, useState } from "react";
-import { AppHeader } from "./app-header";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import {
+  type AppSettings,
   CURRENCY_OPTIONS,
   SETTINGS_SECTIONS,
-  THEME_OPTIONS,
-  type AppSettings,
   type SettingsSection,
+  THEME_OPTIONS,
 } from "../lib/settings";
+import { AppHeader } from "./app-header";
 
 const RESET_CONFIRMATION_TEXT = "clear my data";
 
 export function SettingsScreen() {
   const router = useRouter();
   const { resolvedTheme, setTheme, theme } = useTheme();
-  const [activeSection, setActiveSection] = useState<SettingsSection>("appearance");
+  const [activeSection, setActiveSection] =
+    useState<SettingsSection>("appearance");
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export function SettingsScreen() {
     setIsThemeReady(true);
   }, []);
 
-  const loadSettings = useEffectEvent(async () => {
+  const loadSettings = useCallback(async () => {
     setIsLoading(true);
     setSettingsError(null);
 
@@ -63,7 +64,7 @@ export function SettingsScreen() {
     } finally {
       setIsLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
     void loadSettings();
@@ -137,7 +138,9 @@ export function SettingsScreen() {
         <section className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
           <aside className="lg:border-r lg:border-border lg:pr-8">
             <div className="mb-5">
-              <h2 className="text-base font-semibold tracking-tight">Settings</h2>
+              <h2 className="text-base font-semibold tracking-tight">
+                Settings
+              </h2>
               <p className="text-muted-foreground mt-1 text-sm leading-6">
                 Choose a section from the sidebar.
               </p>
@@ -159,11 +162,15 @@ export function SettingsScreen() {
                     onClick={() => setActiveSection(section.value)}
                     type="button"
                   >
-                    <span className="block text-sm font-medium">{section.label}</span>
+                    <span className="block text-sm font-medium">
+                      {section.label}
+                    </span>
                     <span
                       className={[
                         "mt-1 block text-xs leading-5",
-                        isActive ? "text-foreground/65" : "text-muted-foreground",
+                        isActive
+                          ? "text-foreground/65"
+                          : "text-muted-foreground",
                       ].join(" ")}
                     >
                       {section.description}
@@ -188,7 +195,9 @@ export function SettingsScreen() {
             ) : null}
 
             {isLoading || !settings ? (
-              <p className="text-sm text-muted-foreground">Loading settings...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading settings...
+              </p>
             ) : activeSection === "appearance" ? (
               <section className="max-w-3xl">
                 <div className="space-y-2">
@@ -210,7 +219,8 @@ export function SettingsScreen() {
                         Color theme
                       </h4>
                       <p className="text-muted-foreground mt-3 text-sm leading-6">
-                        Use the system preference or force a light or dark interface.
+                        Use the system preference or force a light or dark
+                        interface.
                       </p>
                     </div>
 
@@ -231,7 +241,10 @@ export function SettingsScreen() {
                           </SelectTriggerButton>
                           <SelectContent>
                             {THEME_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
                                 {option.label}
                               </SelectItem>
                             ))}
@@ -243,7 +256,8 @@ export function SettingsScreen() {
                         Active appearance:{" "}
                         <span className="font-medium text-foreground">
                           {resolvedTheme
-                            ? resolvedTheme.charAt(0).toUpperCase() + resolvedTheme.slice(1)
+                            ? resolvedTheme.charAt(0).toUpperCase() +
+                              resolvedTheme.slice(1)
                             : "System"}
                         </span>
                       </p>
@@ -261,9 +275,9 @@ export function SettingsScreen() {
                     New application defaults
                   </h3>
                   <p className="text-muted-foreground text-sm leading-6">
-                    Choose a fixed currency for salary fields so the create dialog
-                    can keep amounts consistent without free-typing the currency each
-                    time.
+                    Choose a fixed currency for salary fields so the create
+                    dialog can keep amounts consistent without free-typing the
+                    currency each time.
                   </p>
                 </div>
 
@@ -274,8 +288,8 @@ export function SettingsScreen() {
                         Currency
                       </h4>
                       <p className="text-muted-foreground mt-3 text-sm leading-6">
-                        Used as the fixed currency in salary expectation and offer
-                        inputs.
+                        Used as the fixed currency in salary expectation and
+                        offer inputs.
                       </p>
                     </div>
 
@@ -295,7 +309,10 @@ export function SettingsScreen() {
                         </SelectTriggerButton>
                         <SelectContent>
                           {CURRENCY_OPTIONS.map((currency) => (
-                            <SelectItem key={currency.value} value={currency.value}>
+                            <SelectItem
+                              key={currency.value}
+                              value={currency.value}
+                            >
                               {currency.label}
                             </SelectItem>
                           ))}
@@ -312,7 +329,8 @@ export function SettingsScreen() {
                     <span className="font-medium text-foreground">
                       {settings.preferredCurrency}
                     </span>{" "}
-                    as a fixed currency label and store the amount with that code.
+                    as a fixed currency label and store the amount with that
+                    code.
                   </p>
                 </div>
               </section>
@@ -326,8 +344,8 @@ export function SettingsScreen() {
                     Reset local database
                   </h3>
                   <p className="text-muted-foreground text-sm leading-6">
-                    This removes applications, companies, roles, notes, and resets
-                    app settings back to their defaults.
+                    This removes applications, companies, roles, notes, and
+                    resets app settings back to their defaults.
                   </p>
                 </div>
 
@@ -338,15 +356,15 @@ export function SettingsScreen() {
                         Destructive action
                       </h4>
                       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                        There is no undo for this reset. You will need to confirm it
-                        by typing the phrase exactly.
+                        There is no undo for this reset. You will need to
+                        confirm it by typing the phrase exactly.
                       </p>
                     </div>
 
                     <div className="space-y-4">
                       <p className="max-w-xl text-sm leading-6 text-foreground">
-                        Reset the local database and restore the default settings for
-                        the app.
+                        Reset the local database and restore the default
+                        settings for the app.
                       </p>
                       <div>
                         <Button
@@ -391,9 +409,12 @@ export function SettingsScreen() {
             </p>
             <DialogTitleText>Reset the local database</DialogTitleText>
             <DialogDescriptionText>
-              Type <span className="font-medium text-foreground">{RESET_CONFIRMATION_TEXT}</span>{" "}
-              to confirm. This removes all stored application data and restores the
-              default settings.
+              Type{" "}
+              <span className="font-medium text-foreground">
+                {RESET_CONFIRMATION_TEXT}
+              </span>{" "}
+              to confirm. This removes all stored application data and restores
+              the default settings.
             </DialogDescriptionText>
           </DialogHeader>
 
@@ -418,7 +439,8 @@ export function SettingsScreen() {
               </DialogCloseButton>
               <Button
                 disabled={
-                  isResetting || confirmationInput.trim() !== RESET_CONFIRMATION_TEXT
+                  isResetting ||
+                  confirmationInput.trim() !== RESET_CONFIRMATION_TEXT
                 }
                 onClick={() => void handleReset()}
                 type="button"
