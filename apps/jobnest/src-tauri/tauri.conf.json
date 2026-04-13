@@ -21,12 +21,6 @@
       "csp": null
     }
   },
-  "permissions": [
-    "dialog:allow-save",
-    "dialog:allow-open",
-    "fs:allow-write",
-    "fs:allow-read"
-  ],
   "bundle": {
     "active": true,
     "targets": "all",
