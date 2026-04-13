@@ -27,6 +27,12 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Code check
+        run: pnpm run check
+
+      - name: Check jobnest version sync
+        run: pnpm run check:jobnest-version
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -34,12 +40,6 @@ jobs:
 
       - name: Rust tests
         run: cargo test --lib --manifest-path apps/jobnest/src-tauri/Cargo.toml
-
-      - name: Code check
-        run: pnpm run check
-
-      - name: Check jobnest version sync
-        run: pnpm run check:jobnest-version
 
       - name: Build
         run: pnpm run build
