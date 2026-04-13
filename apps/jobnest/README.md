@@ -82,6 +82,25 @@ Build the desktop app bundle:
 pnpm --filter jobnest tauri build
 ```
 
+## Releasing
+
+Versioning and publishing now flow through Changesets.
+
+Create a changeset for any release-worthy app change:
+
+```bash
+pnpm changeset
+```
+
+When the Changesets release PR is merged into `main`:
+
+- Changesets versions `apps/jobnest/package.json`
+- the release script syncs the same version into `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`
+- GitHub Actions builds the Tauri bundles for macOS, Linux, and Windows
+- the generated installers are uploaded to a GitHub Release
+
+That means the canonical downloadable desktop builds live in GitHub Releases instead of only in CI artifacts.
+
 ## Important Files
 
 - `package.json` - app scripts and frontend dependencies

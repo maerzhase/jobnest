@@ -14,8 +14,10 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "bundle:jobnest": "pnpm --filter jobnest tauri build",
     "changeset": "changeset",
     "check": "pnpm syncpack:lint && turbo run lint format typecheck",
+    "check:jobnest-version": "node scripts/sync-jobnest-version.mjs --check",
     "dev": "turbo run dev",
     "fix": "pnpm syncpack:fix && turbo run lint:fix format:fix",
     "format": "turbo run format",
@@ -23,10 +25,11 @@
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "release": "pnpm build && changeset publish",
+    "release:jobnest": "pnpm bundle:jobnest",
     "syncpack:fix": "syncpack fix && pnpm syncpack:format",
     "syncpack:format": "syncpack format && pnpm exec biome format --write package.json packages/ui/package.json apps/web/package.json",
     "syncpack:lint": "syncpack lint",
     "typecheck": "turbo run typecheck",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version && node scripts/sync-jobnest-version.mjs"
   }
 }

@@ -1,0 +1,1030 @@
+use std::{fmt::Write as _, path::Path};
+
+use chrono::Utc;
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
+    QueryBuilder, Row, Sqlite, SqlitePool,
+};
+use tauri::{AppHandle, Manager};
+use thiserror::Error;
+use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
+use uuid::Uuid;
+
+use crate::models::{
+    Application, ApplicationListItem, Company, Contact, CreateApplicationInput, CreateCompanyInput,
+    CreateContactInput, CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, Note,
+    Role, SearchFilters, SearchResult, UpdateApplicationStatusInput,
+};
+
+const ENTITY_APPLICATION: &str = "application";
+const ENTITY_COMPANY: &str = "company";
+const ENTITY_CONTACT: &str = "contact";
+const ENTITY_NOTE: &str = "note";
+const ENTITY_ROLE: &str = "role";
+
+type AppResult<T> = Result<T, AppError>;
+
+#[derive(Debug, Clone)]
+pub struct Database {
+    pool: SqlitePool,
+}
+
+#[derive(Debug, Error)]
+pub enum AppError {
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error("migration error: {0}")]
+    Migration(#[from] sqlx::migrate::MigrateError),
+    #[error("failed to resolve app data directory")]
+    MissingAppDataDir,
+    #[error("filesystem error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("invalid search query")]
+    InvalidSearchQuery,
+}
+
+#[derive(Debug, Clone)]
+struct SearchDocument {
+    id: String,
+    entity_type: &'static str,
+    entity_id: String,
+    title: String,
+    subtitle: String,
+    body: String,
+    keywords: String,
+    updated_at: String,
+}
+
+impl Database {
+    pub async fn new(app: &AppHandle) -> AppResult<Self> {
+        let app_data_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|_| AppError::MissingAppDataDir)?;
+        std::fs::create_dir_all(&app_data_dir)?;
+
+        let db_path = app_data_dir.join("jobnest.sqlite");
+        Self::connect(&db_path).await
+    }
+
+    #[cfg(test)]
+    pub async fn for_path(path: &Path) -> AppResult<Self> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        Self::connect(path).await
+    }
+
+    async fn connect(path: &Path) -> AppResult<Self> {
+        let options = SqliteConnectOptions::new()
+            .filename(path)
+            .create_if_missing(true)
+            .foreign_keys(true)
+            .journal_mode(SqliteJournalMode::Wal)
+            .synchronous(SqliteSynchronous::Normal);
+
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await?;
+
+        sqlx::migrate!("./migrations").run(&pool).await?;
+
+        Ok(Self { pool })
+    }
+
+    pub async fn create_company(&self, input: CreateCompanyInput) -> AppResult<Company> {
+        let now = now_utc();
+        let company = Company {
+            id: new_id(),
+            name: input.name.trim().to_owned(),
+            website: trim_to_option(input.website),
+            location: trim_to_option(input.location),
+            industry: trim_to_option(input.industry),
+            created_at: now.clone(),
+            updated_at: now,
+        };
+
+        sqlx::query(
+            r#"
+            INSERT INTO companies (id, name, website, location, industry, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&company.id)
+        .bind(&company.name)
+        .bind(&company.website)
+        .bind(&company.location)
+        .bind(&company.industry)
+        .bind(&company.created_at)
+        .bind(&company.updated_at)
+        .execute(&self.pool)
+        .await?;
+
+        self.upsert_search_document_for_company(&company.id).await?;
+        Ok(company)
+    }
+
+    pub async fn create_role(&self, input: CreateRoleInput) -> AppResult<Role> {
+        let now = now_utc();
+        let role = Role {
+            id: new_id(),
+            company_id: input.company_id,
+            title: input.title.trim().to_owned(),
+            job_board: trim_to_option(input.job_board),
+            source_url: trim_to_option(input.source_url),
+            employment_type: trim_to_option(input.employment_type),
+            location_text: trim_to_option(input.location_text),
+            salary_text: trim_to_option(input.salary_text),
+            description: trim_to_option(input.description),
+            created_at: now.clone(),
+            updated_at: now,
+        };
+
+        sqlx::query(
+            r#"
+            INSERT INTO roles (
+                id, company_id, title, job_board, source_url, employment_type,
+                location_text, salary_text, description, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&role.id)
+        .bind(&role.company_id)
+        .bind(&role.title)
+        .bind(&role.job_board)
+        .bind(&role.source_url)
+        .bind(&role.employment_type)
+        .bind(&role.location_text)
+        .bind(&role.salary_text)
+        .bind(&role.description)
+        .bind(&role.created_at)
+        .bind(&role.updated_at)
+        .execute(&self.pool)
+        .await?;
+
+        self.upsert_search_document_for_role(&role.id).await?;
+        Ok(role)
+    }
+
+    pub async fn create_application(
+        &self,
+        input: CreateApplicationInput,
+    ) -> AppResult<Application> {
+        let now = now_utc();
+        let application = Application {
+            id: new_id(),
+            role_id: input.role_id,
+            status: input.status.trim().to_owned(),
+            applied_at: trim_to_option(input.applied_at),
+            deadline_at: trim_to_option(input.deadline_at),
+            last_activity_at: now.clone(),
+            priority: input.priority.unwrap_or(0),
+            archived_at: None,
+            created_at: now.clone(),
+            updated_at: now.clone(),
+        };
+
+        sqlx::query(
+            r#"
+            INSERT INTO applications (
+                id, role_id, status, applied_at, deadline_at, last_activity_at,
+                priority, archived_at, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&application.id)
+        .bind(&application.role_id)
+        .bind(&application.status)
+        .bind(&application.applied_at)
+        .bind(&application.deadline_at)
+        .bind(&application.last_activity_at)
+        .bind(application.priority)
+        .bind(&application.archived_at)
+        .bind(&application.created_at)
+        .bind(&application.updated_at)
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO stage_events (id, application_id, from_status, to_status, changed_at, source)
+            VALUES (?, ?, NULL, ?, ?, 'system')
+            "#,
+        )
+        .bind(new_id())
+        .bind(&application.id)
+        .bind(&application.status)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        self.upsert_search_document_for_application(&application.id)
+            .await?;
+
+        Ok(application)
+    }
+
+    pub async fn create_tracked_application(
+        &self,
+        input: CreateTrackedApplicationInput,
+    ) -> AppResult<ApplicationListItem> {
+        let company = self
+            .create_company(CreateCompanyInput {
+                name: input.company_name,
+                website: None,
+                location: None,
+                industry: None,
+            })
+            .await?;
+
+        let role = self
+            .create_role(CreateRoleInput {
+                company_id: company.id,
+                title: input.role_title,
+                job_board: None,
+                source_url: None,
+                employment_type: None,
+                location_text: None,
+                salary_text: None,
+                description: None,
+            })
+            .await?;
+
+        let application = self
+            .create_application(CreateApplicationInput {
+                role_id: role.id,
+                status: input.status.unwrap_or_else(|| "applied".to_owned()),
+                applied_at: trim_to_option(input.applied_at).or_else(|| Some(now_utc())),
+                deadline_at: None,
+                priority: Some(0),
+            })
+            .await?;
+
+        self.get_application_list_item(&application.id).await
+    }
+
+    pub async fn update_application_status(
+        &self,
+        input: UpdateApplicationStatusInput,
+    ) -> AppResult<Application> {
+        let current = sqlx::query(
+            "SELECT role_id, status, applied_at, deadline_at, last_activity_at, priority, archived_at, created_at, updated_at FROM applications WHERE id = ?",
+        )
+        .bind(&input.application_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let now = now_utc();
+        let next_status = input.status.trim().to_owned();
+
+        sqlx::query(
+            "UPDATE applications SET status = ?, last_activity_at = ?, updated_at = ? WHERE id = ?",
+        )
+        .bind(&next_status)
+        .bind(&now)
+        .bind(&now)
+        .bind(&input.application_id)
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            "INSERT INTO stage_events (id, application_id, from_status, to_status, changed_at, source) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(new_id())
+        .bind(&input.application_id)
+        .bind(current.get::<String, _>("status"))
+        .bind(&next_status)
+        .bind(&now)
+        .bind(input.source.unwrap_or_else(|| "user".to_owned()))
+        .execute(&self.pool)
+        .await?;
+
+        self.upsert_search_document_for_application(&input.application_id)
+            .await?;
+
+        Ok(Application {
+            id: input.application_id,
+            role_id: current.get("role_id"),
+            status: next_status,
+            applied_at: current.get("applied_at"),
+            deadline_at: current.get("deadline_at"),
+            last_activity_at: now.clone(),
+            priority: current.get("priority"),
+            archived_at: current.get("archived_at"),
+            created_at: current.get("created_at"),
+            updated_at: now,
+        })
+    }
+
+    pub async fn create_contact(&self, input: CreateContactInput) -> AppResult<Contact> {
+        let now = now_utc();
+        let contact = Contact {
+            id: new_id(),
+            company_id: input.company_id,
+            name: input.name.trim().to_owned(),
+            title: trim_to_option(input.title),
+            email: trim_to_option(input.email),
+            linkedin_url: trim_to_option(input.linkedin_url),
+            notes: trim_to_option(input.notes),
+            created_at: now.clone(),
+            updated_at: now,
+        };
+
+        sqlx::query(
+            r#"
+            INSERT INTO contacts (id, company_id, name, title, email, linkedin_url, notes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&contact.id)
+        .bind(&contact.company_id)
+        .bind(&contact.name)
+        .bind(&contact.title)
+        .bind(&contact.email)
+        .bind(&contact.linkedin_url)
+        .bind(&contact.notes)
+        .bind(&contact.created_at)
+        .bind(&contact.updated_at)
+        .execute(&self.pool)
+        .await?;
+
+        self.upsert_search_document_for_contact(&contact.id).await?;
+        Ok(contact)
+    }
+
+    pub async fn create_note(&self, input: CreateNoteInput) -> AppResult<Note> {
+        let now = now_utc();
+        let note = Note {
+            id: new_id(),
+            application_id: input.application_id,
+            body: input.body.trim().to_owned(),
+            kind: trim_to_option(input.kind).unwrap_or_else(|| "general".to_owned()),
+            created_at: now.clone(),
+            updated_at: now,
+        };
+
+        sqlx::query(
+            "INSERT INTO notes (id, application_id, body, kind, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&note.id)
+        .bind(&note.application_id)
+        .bind(&note.body)
+        .bind(&note.kind)
+        .bind(&note.created_at)
+        .bind(&note.updated_at)
+        .execute(&self.pool)
+        .await?;
+
+        self.upsert_search_document_for_note(&note.id).await?;
+        self.upsert_search_document_for_application(&note.application_id)
+            .await?;
+
+        Ok(note)
+    }
+
+    pub async fn search(
+        &self,
+        query: String,
+        filters: Option<SearchFilters>,
+        limit: Option<u32>,
+        offset: Option<u32>,
+    ) -> AppResult<Vec<SearchResult>> {
+        let normalized_query = build_fts_query(&query)?;
+        let filters = filters.unwrap_or(SearchFilters {
+            entity_types: None,
+            only_active_applications: None,
+            statuses: None,
+        });
+
+        let mut builder = QueryBuilder::<Sqlite>::new(
+            r#"
+            SELECT
+                si.entity_type,
+                si.entity_id,
+                si.title,
+                si.subtitle,
+                snippet(search_index, 5, '<mark>', '</mark>', '…', 12) AS snippet,
+                bm25(search_index, 10.0, 6.0, 2.0, 4.0) AS score
+            FROM search_index si
+            LEFT JOIN applications application_filter
+                ON si.entity_type = 'application' AND si.entity_id = application_filter.id
+            WHERE search_index MATCH
+            "#,
+        );
+
+        builder.push_bind(normalized_query);
+
+        if let Some(entity_types) = filters.entity_types.filter(|items| !items.is_empty()) {
+            builder.push(" AND si.entity_type IN (");
+            let mut separated = builder.separated(", ");
+            for entity_type in entity_types {
+                separated.push_bind(entity_type);
+            }
+            separated.push_unseparated(")");
+        }
+
+        if filters.only_active_applications.unwrap_or(false) {
+            builder.push(
+                " AND (si.entity_type != 'application' OR application_filter.archived_at IS NULL)",
+            );
+        }
+
+        if let Some(statuses) = filters.statuses.filter(|items| !items.is_empty()) {
+            builder.push(" AND (si.entity_type != 'application' OR application_filter.status IN (");
+            let mut separated = builder.separated(", ");
+            for status in statuses {
+                separated.push_bind(status);
+            }
+            separated.push_unseparated("))");
+        }
+
+        let limit = i64::from(limit.unwrap_or(20).min(100));
+        let offset = i64::from(offset.unwrap_or(0));
+
+        builder.push(" ORDER BY score ASC, si.title ASC LIMIT ");
+        builder.push_bind(limit);
+        builder.push(" OFFSET ");
+        builder.push_bind(offset);
+
+        let rows = builder.build().fetch_all(&self.pool).await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| SearchResult {
+                entity_type: row.get("entity_type"),
+                entity_id: row.get("entity_id"),
+                title: row.get("title"),
+                subtitle: row.get("subtitle"),
+                snippet: row.get("snippet"),
+                score: row.get("score"),
+            })
+            .collect())
+    }
+
+    pub async fn reindex_search(&self) -> AppResult<()> {
+        sqlx::query("DELETE FROM search_documents")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("DELETE FROM search_index")
+            .execute(&self.pool)
+            .await?;
+
+        let company_ids = sqlx::query_scalar::<_, String>("SELECT id FROM companies ORDER BY name")
+            .fetch_all(&self.pool)
+            .await?;
+        for company_id in company_ids {
+            self.upsert_search_document_for_company(&company_id).await?;
+        }
+
+        let role_ids = sqlx::query_scalar::<_, String>("SELECT id FROM roles ORDER BY title")
+            .fetch_all(&self.pool)
+            .await?;
+        for role_id in role_ids {
+            self.upsert_search_document_for_role(&role_id).await?;
+        }
+
+        let application_ids =
+            sqlx::query_scalar::<_, String>("SELECT id FROM applications ORDER BY created_at")
+                .fetch_all(&self.pool)
+                .await?;
+        for application_id in application_ids {
+            self.upsert_search_document_for_application(&application_id)
+                .await?;
+        }
+
+        let contact_ids = sqlx::query_scalar::<_, String>("SELECT id FROM contacts ORDER BY name")
+            .fetch_all(&self.pool)
+            .await?;
+        for contact_id in contact_ids {
+            self.upsert_search_document_for_contact(&contact_id).await?;
+        }
+
+        let note_ids = sqlx::query_scalar::<_, String>("SELECT id FROM notes ORDER BY created_at")
+            .fetch_all(&self.pool)
+            .await?;
+        for note_id in note_ids {
+            self.upsert_search_document_for_note(&note_id).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn list_applications(&self) -> AppResult<Vec<ApplicationListItem>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                a.id,
+                c.name AS company_name,
+                r.title AS role_title,
+                a.status,
+                a.applied_at,
+                a.updated_at,
+                a.archived_at
+            FROM applications a
+            INNER JOIN roles r ON r.id = a.role_id
+            INNER JOIN companies c ON c.id = r.company_id
+            ORDER BY a.updated_at DESC, a.created_at DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| ApplicationListItem {
+                id: row.get("id"),
+                company_name: row.get("company_name"),
+                role_title: row.get("role_title"),
+                status: row.get("status"),
+                applied_at: row.get("applied_at"),
+                updated_at: row.get("updated_at"),
+                archived_at: row.get("archived_at"),
+            })
+            .collect())
+    }
+
+    async fn upsert_search_document_for_company(&self, company_id: &str) -> AppResult<()> {
+        let row = sqlx::query(
+            "SELECT name, website, location, industry, updated_at FROM companies WHERE id = ?",
+        )
+        .bind(company_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let document = SearchDocument {
+            id: new_id(),
+            entity_type: ENTITY_COMPANY,
+            entity_id: company_id.to_owned(),
+            title: row.get("name"),
+            subtitle: row.get::<Option<String>, _>("location").unwrap_or_default(),
+            body: join_parts([
+                row.get::<Option<String>, _>("website"),
+                row.get::<Option<String>, _>("industry"),
+            ]),
+            keywords: join_parts([
+                Some("company".to_owned()),
+                row.get::<Option<String>, _>("industry"),
+                row.get::<Option<String>, _>("location"),
+            ]),
+            updated_at: row.get("updated_at"),
+        };
+
+        self.persist_search_document(document).await
+    }
+
+    async fn upsert_search_document_for_role(&self, role_id: &str) -> AppResult<()> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                r.title,
+                r.job_board,
+                r.source_url,
+                r.employment_type,
+                r.location_text,
+                r.salary_text,
+                r.description,
+                r.updated_at,
+                c.name AS company_name
+            FROM roles r
+            INNER JOIN companies c ON c.id = r.company_id
+            WHERE r.id = ?
+            "#,
+        )
+        .bind(role_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let company_name: String = row.get("company_name");
+        let document = SearchDocument {
+            id: new_id(),
+            entity_type: ENTITY_ROLE,
+            entity_id: role_id.to_owned(),
+            title: row.get("title"),
+            subtitle: company_name.clone(),
+            body: join_parts([
+                row.get::<Option<String>, _>("location_text"),
+                row.get::<Option<String>, _>("employment_type"),
+                row.get::<Option<String>, _>("salary_text"),
+                row.get::<Option<String>, _>("description"),
+                row.get::<Option<String>, _>("source_url"),
+            ]),
+            keywords: join_parts([
+                Some(company_name),
+                row.get::<Option<String>, _>("job_board"),
+                row.get::<Option<String>, _>("employment_type"),
+            ]),
+            updated_at: row.get("updated_at"),
+        };
+
+        self.persist_search_document(document).await
+    }
+
+    async fn upsert_search_document_for_application(&self, application_id: &str) -> AppResult<()> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                a.status,
+                a.priority,
+                a.applied_at,
+                a.deadline_at,
+                a.updated_at,
+                r.title AS role_title,
+                c.name AS company_name
+            FROM applications a
+            INNER JOIN roles r ON r.id = a.role_id
+            INNER JOIN companies c ON c.id = r.company_id
+            WHERE a.id = ?
+            "#,
+        )
+        .bind(application_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let notes_summary = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT group_concat(body, ' ') FROM notes WHERE application_id = ?",
+        )
+        .bind(application_id)
+        .fetch_one(&self.pool)
+        .await?
+        .unwrap_or_default();
+
+        let role_title: String = row.get("role_title");
+        let company_name: String = row.get("company_name");
+        let status: String = row.get("status");
+        let document = SearchDocument {
+            id: new_id(),
+            entity_type: ENTITY_APPLICATION,
+            entity_id: application_id.to_owned(),
+            title: format!("{role_title} at {company_name}"),
+            subtitle: format!("Status: {status}"),
+            body: join_parts([
+                row.get::<Option<String>, _>("applied_at"),
+                row.get::<Option<String>, _>("deadline_at"),
+                Some(format!("Priority {}", row.get::<i64, _>("priority"))),
+                Some(notes_summary),
+            ]),
+            keywords: join_parts([Some(role_title), Some(company_name), Some(status)]),
+            updated_at: row.get("updated_at"),
+        };
+
+        self.persist_search_document(document).await
+    }
+
+    async fn upsert_search_document_for_contact(&self, contact_id: &str) -> AppResult<()> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                contact.name,
+                contact.title,
+                contact.email,
+                contact.linkedin_url,
+                contact.notes,
+                contact.updated_at,
+                company.name AS company_name
+            FROM contacts contact
+            INNER JOIN companies company ON company.id = contact.company_id
+            WHERE contact.id = ?
+            "#,
+        )
+        .bind(contact_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let company_name: String = row.get("company_name");
+        let title = row
+            .get::<Option<String>, _>("title")
+            .unwrap_or_else(|| "Contact".to_owned());
+
+        let document = SearchDocument {
+            id: new_id(),
+            entity_type: ENTITY_CONTACT,
+            entity_id: contact_id.to_owned(),
+            title: row.get("name"),
+            subtitle: format!("{title} at {company_name}"),
+            body: join_parts([
+                row.get::<Option<String>, _>("email"),
+                row.get::<Option<String>, _>("linkedin_url"),
+                row.get::<Option<String>, _>("notes"),
+            ]),
+            keywords: join_parts([Some(company_name), Some("contact".to_owned())]),
+            updated_at: row.get("updated_at"),
+        };
+
+        self.persist_search_document(document).await
+    }
+
+    async fn upsert_search_document_for_note(&self, note_id: &str) -> AppResult<()> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                n.application_id,
+                n.body,
+                n.kind,
+                n.updated_at,
+                r.title AS role_title,
+                c.name AS company_name,
+                a.status AS application_status
+            FROM notes n
+            INNER JOIN applications a ON a.id = n.application_id
+            INNER JOIN roles r ON r.id = a.role_id
+            INNER JOIN companies c ON c.id = r.company_id
+            WHERE n.id = ?
+            "#,
+        )
+        .bind(note_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let role_title: String = row.get("role_title");
+        let company_name: String = row.get("company_name");
+        let kind: String = row.get("kind");
+        let document = SearchDocument {
+            id: new_id(),
+            entity_type: ENTITY_NOTE,
+            entity_id: note_id.to_owned(),
+            title: format!("Note for {role_title} at {company_name}"),
+            subtitle: kind.clone(),
+            body: row.get("body"),
+            keywords: join_parts([
+                Some(kind),
+                Some(role_title),
+                Some(company_name),
+                row.get::<Option<String>, _>("application_status"),
+            ]),
+            updated_at: row.get("updated_at"),
+        };
+
+        self.persist_search_document(document).await
+    }
+
+    async fn persist_search_document(&self, document: SearchDocument) -> AppResult<()> {
+        let existing_id = sqlx::query_scalar::<_, String>(
+            "SELECT id FROM search_documents WHERE entity_type = ? AND entity_id = ?",
+        )
+        .bind(document.entity_type)
+        .bind(&document.entity_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let document_id = existing_id.unwrap_or(document.id);
+
+        sqlx::query(
+            r#"
+            INSERT INTO search_documents (id, entity_type, entity_id, title, subtitle, body, keywords, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(entity_type, entity_id) DO UPDATE SET
+                title = excluded.title,
+                subtitle = excluded.subtitle,
+                body = excluded.body,
+                keywords = excluded.keywords,
+                updated_at = excluded.updated_at
+            "#,
+        )
+        .bind(&document_id)
+        .bind(document.entity_type)
+        .bind(&document.entity_id)
+        .bind(&document.title)
+        .bind(&document.subtitle)
+        .bind(&document.body)
+        .bind(&document.keywords)
+        .bind(&document.updated_at)
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query("DELETE FROM search_index WHERE doc_id = ?")
+            .bind(&document_id)
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query(
+            "INSERT INTO search_index (doc_id, entity_type, entity_id, title, subtitle, body, keywords) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&document_id)
+        .bind(document.entity_type)
+        .bind(&document.entity_id)
+        .bind(&document.title)
+        .bind(&document.subtitle)
+        .bind(&document.body)
+        .bind(&document.keywords)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn get_application_list_item(
+        &self,
+        application_id: &str,
+    ) -> AppResult<ApplicationListItem> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                a.id,
+                c.name AS company_name,
+                r.title AS role_title,
+                a.status,
+                a.applied_at,
+                a.updated_at,
+                a.archived_at
+            FROM applications a
+            INNER JOIN roles r ON r.id = a.role_id
+            INNER JOIN companies c ON c.id = r.company_id
+            WHERE a.id = ?
+            "#,
+        )
+        .bind(application_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(ApplicationListItem {
+            id: row.get("id"),
+            company_name: row.get("company_name"),
+            role_title: row.get("role_title"),
+            status: row.get("status"),
+            applied_at: row.get("applied_at"),
+            updated_at: row.get("updated_at"),
+            archived_at: row.get("archived_at"),
+        })
+    }
+}
+
+fn now_utc() -> String {
+    Utc::now().to_rfc3339()
+}
+
+fn new_id() -> String {
+    Uuid::new_v4().to_string()
+}
+
+fn trim_to_option(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_owned())
+        }
+    })
+}
+
+fn join_parts<const N: usize>(parts: [Option<String>; N]) -> String {
+    parts
+        .into_iter()
+        .flatten()
+        .map(|part| part.trim().to_owned())
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn normalize_for_search(input: &str) -> String {
+    input
+        .nfkd()
+        .filter(|ch| !is_combining_mark(*ch))
+        .flat_map(char::to_lowercase)
+        .collect::<String>()
+}
+
+fn build_fts_query(input: &str) -> AppResult<String> {
+    let normalized = normalize_for_search(input);
+    let tokens = normalized
+        .split(|ch: char| !ch.is_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .collect::<Vec<_>>();
+
+    if tokens.is_empty() {
+        return Err(AppError::InvalidSearchQuery);
+    }
+
+    let mut query = String::new();
+    for (index, token) in tokens.iter().enumerate() {
+        if index > 0 {
+            query.push_str(" AND ");
+        }
+        let _ = write!(query, "{token}*");
+    }
+
+    Ok(query)
+}
+
+#[cfg(test)]
+mod tests {
+    use tempfile::tempdir;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn creates_schema_and_searches_accented_text() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        let company = db
+            .create_company(CreateCompanyInput {
+                name: "José Labs".to_owned(),
+                website: Some("https://jose.example".to_owned()),
+                location: Some("Lisbon".to_owned()),
+                industry: Some("Software".to_owned()),
+            })
+            .await
+            .expect("company");
+
+        let role = db
+            .create_role(CreateRoleInput {
+                company_id: company.id.clone(),
+                title: "Frontend Engineer".to_owned(),
+                job_board: Some("LinkedIn".to_owned()),
+                source_url: None,
+                employment_type: Some("Full-time".to_owned()),
+                location_text: Some("Remote".to_owned()),
+                salary_text: None,
+                description: Some("Build polished product UX".to_owned()),
+            })
+            .await
+            .expect("role");
+
+        let application = db
+            .create_application(CreateApplicationInput {
+                role_id: role.id,
+                status: "applied".to_owned(),
+                applied_at: Some("2026-04-13T09:00:00Z".to_owned()),
+                deadline_at: None,
+                priority: Some(2),
+            })
+            .await
+            .expect("application");
+
+        db.create_note(CreateNoteInput {
+            application_id: application.id,
+            body: "Strong portfolio and recruiter follow-up.".to_owned(),
+            kind: Some("interview".to_owned()),
+        })
+        .await
+        .expect("note");
+
+        let results = db
+            .search("jose".to_owned(), None, Some(10), Some(0))
+            .await
+            .expect("search");
+
+        assert!(!results.is_empty());
+        assert_eq!(results[0].entity_type, ENTITY_COMPANY);
+
+        let prefix_results = db
+            .search("front".to_owned(), None, Some(10), Some(0))
+            .await
+            .expect("prefix search");
+
+        assert!(prefix_results
+            .iter()
+            .any(|result| result.entity_type == ENTITY_ROLE));
+    }
+
+    #[tokio::test]
+    async fn rebuilds_search_index() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        let company = db
+            .create_company(CreateCompanyInput {
+                name: "Northwind".to_owned(),
+                website: None,
+                location: Some("Porto".to_owned()),
+                industry: None,
+            })
+            .await
+            .expect("company");
+
+        sqlx::query("DELETE FROM search_documents")
+            .execute(&db.pool)
+            .await
+            .expect("clear docs");
+        sqlx::query("DELETE FROM search_index")
+            .execute(&db.pool)
+            .await
+            .expect("clear fts");
+
+        let before = db
+            .search("north".to_owned(), None, Some(10), Some(0))
+            .await
+            .expect("search before");
+        assert!(before.is_empty());
+
+        db.reindex_search().await.expect("reindex");
+
+        let after = db
+            .search("north".to_owned(), None, Some(10), Some(0))
+            .await
+            .expect("search after");
+
+        assert_eq!(after.len(), 1);
+        assert_eq!(after[0].entity_id, company.id);
+    }
+}

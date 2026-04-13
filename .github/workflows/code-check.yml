@@ -27,5 +27,8 @@ jobs:
       - name: Code check
         run: pnpm run check
 
+      - name: Check jobnest version sync
+        run: pnpm run check:jobnest-version
+
       - name: Build
         run: pnpm run build

@@ -2,10 +2,10 @@ node_modules
 .pnpm-debug.log*
 .turbo
 .next
-.out
 .vercel
 .output
 .cache
+out
 build
 dist
 coverage
