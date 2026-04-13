@@ -37,7 +37,8 @@ export function DialogTriggerButton({
   );
 }
 
-export interface DialogContentProps extends Omit<DialogPopupProps, "className"> {
+export interface DialogContentProps
+  extends Omit<DialogPopupProps, "className"> {
   children: ReactNode;
   className?: string;
 }
@@ -77,7 +78,8 @@ export function DialogHeader({
   return <div className={cn("mb-6 space-y-2", className)}>{children}</div>;
 }
 
-export interface DialogTitleTextProps extends Omit<DialogTitleProps, "className"> {
+export interface DialogTitleTextProps
+  extends Omit<DialogTitleProps, "className"> {
   className?: string;
 }
 

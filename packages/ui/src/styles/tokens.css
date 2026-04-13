@@ -39,17 +39,12 @@
       --input: rgb(255 255 255 / 0.14);
       --ring: rgb(255 255 255 / 0.55);
       --page-background:
-        radial-gradient(
-          circle at top,
-          rgb(255 255 255 / 0.08),
-          transparent 34%
-        ),
+        radial-gradient(circle at top, rgb(255 255 255 / 0.08), transparent 34%),
         radial-gradient(
           circle at bottom right,
           rgb(255 255 255 / 0.04),
           transparent 26%
-        ),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
+        ), linear-gradient(180deg, #050505 0%, #000000 100%);
       color-scheme: dark;
     }
   }

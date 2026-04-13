@@ -64,7 +64,8 @@ export function SelectValueText({
   );
 }
 
-export interface SelectContentProps extends Omit<SelectPopup.Props, "className"> {
+export interface SelectContentProps
+  extends Omit<SelectPopup.Props, "className"> {
   children: ReactNode;
   className?: string;
 }
@@ -98,7 +99,8 @@ export function SelectContent({
   );
 }
 
-export interface SelectItemProps extends Omit<BaseSelectItem.Props, "className"> {
+export interface SelectItemProps
+  extends Omit<BaseSelectItem.Props, "className"> {
   children: ReactNode;
   className?: string;
 }
@@ -109,9 +111,9 @@ export function SelectItem({
   ...props
 }: SelectItemProps): JSX.Element {
   return (
-      <BaseSelect.Item
-        {...props}
-        className={cn(
+    <BaseSelect.Item
+      {...props}
+      className={cn(
         "grid min-h-10 w-full cursor-default grid-cols-[1rem_minmax(0,1fr)] items-center gap-3 rounded-sm px-3 py-2 text-sm text-foreground outline-none select-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[selected]:bg-muted/70 data-[selected]:font-medium data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
@@ -128,12 +130,7 @@ export function SelectItem({
 
 function ChevronDownIcon(): JSX.Element {
   return (
-    <svg
-      aria-hidden="true"
-      className="size-4"
-      fill="none"
-      viewBox="0 0 16 16"
-    >
+    <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 16 16">
       <path
         d="M4 6.25L8 10.25L12 6.25"
         stroke="currentColor"
@@ -147,12 +144,7 @@ function ChevronDownIcon(): JSX.Element {
 
 function CheckIcon(): JSX.Element {
   return (
-    <svg
-      aria-hidden="true"
-      className="size-4"
-      fill="none"
-      viewBox="0 0 16 16"
-    >
+    <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 16 16">
       <path
         d="M3.75 8.25L6.75 11.25L12.25 5.75"
         stroke="currentColor"
