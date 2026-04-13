@@ -197,18 +197,12 @@ export function ApplicationTracker() {
     <>
       <section>
         <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="space-y-2">
+          <div>
             <h2 className="text-2xl font-semibold tracking-tight">
-              Applications
+              Applications ({applications.length})
             </h2>
-            <p className="text-muted-foreground text-sm">
-              Keep your current job search in one place.
-            </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="rounded-md border border-border px-3 py-1 text-sm text-muted-foreground">
-              {applications.length} total
-            </div>
             <Button onClick={() => setIsCreateModalOpen(true)} type="button">
               Add application
             </Button>
