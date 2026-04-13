@@ -6,7 +6,7 @@ use crate::{
         AppSettings, Application, ApplicationListItem, Company, Contact, CreateApplicationInput,
         CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
         CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
-        UpdateApplicationStatusInput, UpdateAppSettingsInput,
+        UpdateAppSettingsInput, UpdateApplicationStatusInput,
     },
     AppState,
 };

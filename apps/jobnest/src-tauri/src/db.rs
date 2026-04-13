@@ -13,8 +13,8 @@ use uuid::Uuid;
 use crate::models::{
     AppSettings, Application, ApplicationListItem, Company, Contact, CreateApplicationInput,
     CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
-    CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
-    UpdateApplicationStatusInput, UpdateAppSettingsInput,
+    CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
+    UpdateApplicationStatusInput,
 };
 
 const ENTITY_APPLICATION: &str = "application";
@@ -608,11 +608,10 @@ impl Database {
     }
 
     pub async fn get_app_settings(&self) -> AppResult<AppSettings> {
-        let row = sqlx::query(
-            "SELECT preferred_currency, updated_at FROM app_settings WHERE id = 1",
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        let row =
+            sqlx::query("SELECT preferred_currency, updated_at FROM app_settings WHERE id = 1")
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(AppSettings {
             preferred_currency: row.get("preferred_currency"),
