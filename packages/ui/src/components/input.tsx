@@ -11,7 +11,11 @@ export interface InputProps extends Omit<BaseInputProps, "className"> {
   invalid?: boolean;
 }
 
-export function Input({ className, invalid, ...props }: InputProps): JSX.Element {
+export function Input({
+  className,
+  invalid,
+  ...props
+}: InputProps): JSX.Element {
   return (
     <BaseInput
       {...props}

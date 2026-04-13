@@ -775,7 +775,7 @@ function normalizeStatus(value: string): ApplicationStatus {
 }
 
 function getStatusStyles(status: string): string {
-  const baseStyles = "bg-opacity-10";
+  const _baseStyles = "bg-opacity-10";
 
   switch (status) {
     case "saved":

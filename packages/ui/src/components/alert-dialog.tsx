@@ -4,7 +4,9 @@ import { AlertDialog as BaseAlertDialog } from "@base-ui/react/alert-dialog";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
-type AlertDialogRootProps = ComponentPropsWithoutRef<typeof BaseAlertDialog.Root>;
+type AlertDialogRootProps = ComponentPropsWithoutRef<
+  typeof BaseAlertDialog.Root
+>;
 type AlertDialogTriggerProps = ComponentPropsWithoutRef<
   typeof BaseAlertDialog.Trigger
 >;

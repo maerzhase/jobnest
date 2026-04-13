@@ -35,7 +35,9 @@ export function Field({
       <div className="flex items-center justify-between gap-4">
         <BaseField.Label className="text-sm font-medium text-foreground">
           {label}
-          {required && <span className="ml-1 text-red-600 dark:text-red-400">*</span>}
+          {required && (
+            <span className="ml-1 text-red-600 dark:text-red-400">*</span>
+          )}
         </BaseField.Label>
         {description ? (
           <BaseField.Description className="text-xs text-muted-foreground">
