@@ -19,8 +19,8 @@ import {
 } from "@acme/ui";
 import { invoke } from "@tauri-apps/api/core";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { startTransition, useEffect, useEffectEvent, useState } from "react";
 import { AppHeader } from "./app-header";
 import {
   CURRENCY_OPTIONS,
@@ -51,11 +51,7 @@ export function SettingsScreen() {
     setIsThemeReady(true);
   }, []);
 
-  useEffect(() => {
-    void loadSettings();
-  }, []);
-
-  async function loadSettings() {
+  const loadSettings = useEffectEvent(async () => {
     setIsLoading(true);
     setSettingsError(null);
 
@@ -67,7 +63,11 @@ export function SettingsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }
+  });
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   async function handleCurrencyChange(nextCurrency: string) {
     if (!settings || nextCurrency === settings.preferredCurrency) {

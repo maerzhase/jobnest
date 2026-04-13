@@ -1,6 +1,5 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Button,
   Dialog,
@@ -18,11 +17,12 @@ import {
   SelectTriggerButton,
   SelectValueText,
 } from "@acme/ui";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { invoke } from "@tauri-apps/api/core";
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CURRENCY_OPTIONS, type AppSettings } from "../lib/settings";
+import { type AppSettings, CURRENCY_OPTIONS } from "../lib/settings";
 
 const createApplicationSchema = z.object({
   jobPostUrl: z.string().trim().url("Enter a valid job post URL"),
@@ -100,16 +100,43 @@ export function ApplicationTracker() {
   const selectedSalaryExpectationCurrency = watch("salaryExpectationCurrency");
   const selectedSalaryOfferCurrency = watch("salaryOfferCurrency");
 
+  const loadApplications = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+
+    try {
+      const items = await invoke<ApplicationListItem[]>("list_applications");
+      setApplications(items);
+    } catch (error) {
+      setLoadError(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadSettings = useCallback(async () => {
+    setIsLoadingSettings(true);
+
+    try {
+      const currentSettings = await invoke<AppSettings>("get_app_settings");
+      setSettings(currentSettings);
+    } catch (error) {
+      setLoadError(getErrorMessage(error));
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadApplications();
     void loadSettings();
-  }, []);
+  }, [loadApplications, loadSettings]);
 
   useEffect(() => {
     if (isCreateModalOpen) {
       void loadSettings();
     }
-  }, [isCreateModalOpen]);
+  }, [isCreateModalOpen, loadSettings]);
 
   useEffect(() => {
     if (!settings) {
@@ -123,55 +150,31 @@ export function ApplicationTracker() {
     });
   }, [reset, settings]);
 
-  async function loadApplications() {
-    setIsLoading(true);
-    setLoadError(null);
-
-    try {
-      const items = await invoke<ApplicationListItem[]>("list_applications");
-      setApplications(items);
-    } catch (error) {
-      setLoadError(getErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function loadSettings() {
-    setIsLoadingSettings(true);
-
-    try {
-      const currentSettings = await invoke<AppSettings>("get_app_settings");
-      setSettings(currentSettings);
-    } catch (error) {
-      setLoadError(getErrorMessage(error));
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  }
-
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
 
     try {
       const preferredCurrency = settings?.preferredCurrency ?? "EUR";
-      const created = await invoke<ApplicationListItem>("create_tracked_application", {
-        input: {
-          jobPostUrl: values.jobPostUrl,
-          companyName: values.companyName,
-          roleTitle: values.roleTitle,
-          salaryExpectation: formatSalaryValue(
-            values.salaryExpectation,
-            values.salaryExpectationCurrency || preferredCurrency,
-          ),
-          salaryOffer: formatSalaryValue(
-            values.salaryOffer,
-            values.salaryOfferCurrency || preferredCurrency,
-          ),
-          status: values.status,
-          notes: values.notes,
+      const created = await invoke<ApplicationListItem>(
+        "create_tracked_application",
+        {
+          input: {
+            jobPostUrl: values.jobPostUrl,
+            companyName: values.companyName,
+            roleTitle: values.roleTitle,
+            salaryExpectation: formatSalaryValue(
+              values.salaryExpectation,
+              values.salaryExpectationCurrency || preferredCurrency,
+            ),
+            salaryOffer: formatSalaryValue(
+              values.salaryOffer,
+              values.salaryOfferCurrency || preferredCurrency,
+            ),
+            status: values.status,
+            notes: values.notes,
+          },
         },
-      });
+      );
 
       reset(formDefaults);
       if (settings) {
@@ -195,7 +198,9 @@ export function ApplicationTracker() {
       <section>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold tracking-tight">Applications</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Applications
+            </h2>
             <p className="text-muted-foreground text-sm">
               Keep your current job search in one place.
             </p>
@@ -217,7 +222,9 @@ export function ApplicationTracker() {
         ) : null}
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading applications...</p>
+          <p className="text-sm text-muted-foreground">
+            Loading applications...
+          </p>
         ) : applications.length === 0 ? (
           <div className="rounded-md border border-dashed border-border px-5 py-10 text-center">
             <p className="text-base font-medium">Nothing tracked yet</p>
@@ -311,7 +318,8 @@ export function ApplicationTracker() {
             </p>
             <DialogTitleText>Add a role to track</DialogTitleText>
             <DialogDescriptionText>
-              Capture the core details for this application and keep the timeline local.
+              Capture the core details for this application and keep the
+              timeline local.
             </DialogDescriptionText>
           </DialogHeader>
 
@@ -395,7 +403,10 @@ export function ApplicationTracker() {
               </Field>
 
               <Field
-                error={errors.salaryOffer?.message ?? errors.salaryOfferCurrency?.message}
+                error={
+                  errors.salaryOffer?.message ??
+                  errors.salaryOfferCurrency?.message
+                }
                 label="Salary offer"
                 name="salaryOffer"
               >
@@ -477,7 +488,10 @@ export function ApplicationTracker() {
               <DialogCloseButton disabled={isSubmitting} type="button">
                 Cancel
               </DialogCloseButton>
-              <Button disabled={isSubmitting || isLoadingSettings} type="submit">
+              <Button
+                disabled={isSubmitting || isLoadingSettings}
+                type="submit"
+              >
                 {isSubmitting ? "Saving..." : "Save application"}
               </Button>
             </DialogFooter>
@@ -501,7 +515,9 @@ function formatDate(value: string) {
 }
 
 function formatStatusLabel(value: string) {
-  return STATUS_OPTIONS.find((option) => option.value === value)?.label ?? value;
+  return (
+    STATUS_OPTIONS.find((option) => option.value === value)?.label ?? value
+  );
 }
 
 function getTimelineLabel(application: ApplicationListItem) {
