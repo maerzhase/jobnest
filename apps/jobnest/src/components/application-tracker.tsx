@@ -22,13 +22,16 @@ import { invoke } from "@tauri-apps/api/core";
 import { startTransition, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { CURRENCY_OPTIONS, type AppSettings } from "../lib/settings";
 
 const createApplicationSchema = z.object({
   jobPostUrl: z.string().trim().url("Enter a valid job post URL"),
   companyName: z.string().trim().min(1, "Company is required"),
   roleTitle: z.string().trim().min(1, "Role title is required"),
   salaryExpectation: z.string().optional(),
+  salaryExpectationCurrency: z.string().trim().min(1, "Choose a currency"),
   salaryOffer: z.string().optional(),
+  salaryOfferCurrency: z.string().trim().min(1, "Choose a currency"),
   status: z.enum(["saved", "applied", "interview", "offer", "rejected"]),
   notes: z.string().optional(),
 });
@@ -55,7 +58,9 @@ const formDefaults: CreateApplicationValues = {
   companyName: "",
   roleTitle: "",
   salaryExpectation: "",
+  salaryExpectationCurrency: "EUR",
   salaryOffer: "",
+  salaryOfferCurrency: "EUR",
   status: "saved",
   notes: "",
 };
@@ -72,7 +77,9 @@ type ApplicationStatus = (typeof STATUS_OPTIONS)[number]["value"];
 
 export function ApplicationTracker() {
   const [applications, setApplications] = useState<ApplicationListItem[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -90,10 +97,31 @@ export function ApplicationTracker() {
   });
 
   const selectedStatus = watch("status");
+  const selectedSalaryExpectationCurrency = watch("salaryExpectationCurrency");
+  const selectedSalaryOfferCurrency = watch("salaryOfferCurrency");
 
   useEffect(() => {
     void loadApplications();
+    void loadSettings();
   }, []);
+
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      void loadSettings();
+    }
+  }, [isCreateModalOpen]);
+
+  useEffect(() => {
+    if (!settings) {
+      return;
+    }
+
+    reset({
+      ...formDefaults,
+      salaryExpectationCurrency: settings.preferredCurrency,
+      salaryOfferCurrency: settings.preferredCurrency,
+    });
+  }, [reset, settings]);
 
   async function loadApplications() {
     setIsLoading(true);
@@ -109,23 +137,50 @@ export function ApplicationTracker() {
     }
   }
 
+  async function loadSettings() {
+    setIsLoadingSettings(true);
+
+    try {
+      const currentSettings = await invoke<AppSettings>("get_app_settings");
+      setSettings(currentSettings);
+    } catch (error) {
+      setLoadError(getErrorMessage(error));
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  }
+
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
 
     try {
+      const preferredCurrency = settings?.preferredCurrency ?? "EUR";
       const created = await invoke<ApplicationListItem>("create_tracked_application", {
         input: {
           jobPostUrl: values.jobPostUrl,
           companyName: values.companyName,
           roleTitle: values.roleTitle,
-          salaryExpectation: values.salaryExpectation,
-          salaryOffer: values.salaryOffer,
+          salaryExpectation: formatSalaryValue(
+            values.salaryExpectation,
+            values.salaryExpectationCurrency || preferredCurrency,
+          ),
+          salaryOffer: formatSalaryValue(
+            values.salaryOffer,
+            values.salaryOfferCurrency || preferredCurrency,
+          ),
           status: values.status,
           notes: values.notes,
         },
       });
 
       reset(formDefaults);
+      if (settings) {
+        reset({
+          ...formDefaults,
+          salaryExpectationCurrency: settings.preferredCurrency,
+          salaryOfferCurrency: settings.preferredCurrency,
+        });
+      }
       setIsCreateModalOpen(false);
       startTransition(() => {
         setApplications((current) => [created, ...current]);
@@ -234,7 +289,15 @@ export function ApplicationTracker() {
 
           if (!open) {
             setSubmitError(null);
-            reset(formDefaults);
+            reset(
+              settings
+                ? {
+                    ...formDefaults,
+                    salaryExpectationCurrency: settings.preferredCurrency,
+                    salaryOfferCurrency: settings.preferredCurrency,
+                  }
+                : formDefaults,
+            );
           }
 
           setIsCreateModalOpen(open);
@@ -289,29 +352,86 @@ export function ApplicationTracker() {
               />
             </Field>
 
-            <Field
-              error={errors.salaryExpectation?.message}
-              label="Salary expectation"
-              name="salaryExpectation"
-            >
-              <Input
-                inputMode="text"
-                placeholder="EUR 60k"
-                {...register("salaryExpectation")}
-              />
-            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                error={
+                  errors.salaryExpectation?.message ??
+                  errors.salaryExpectationCurrency?.message
+                }
+                label="Salary expectation"
+                name="salaryExpectation"
+              >
+                <div className="grid grid-cols-[124px_minmax(0,1fr)] rounded-md border border-input bg-background shadow-sm transition-[border-color,box-shadow] focus-within:border-foreground focus-within:ring-3 focus-within:ring-ring/25">
+                  <Select
+                    name="salaryExpectationCurrency"
+                    onValueChange={(value) => {
+                      if (value) {
+                        setValue("salaryExpectationCurrency", value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                    value={selectedSalaryExpectationCurrency}
+                  >
+                    <SelectTriggerButton className="h-11 rounded-none rounded-l-md border-0 border-r border-input shadow-none focus-visible:ring-0">
+                      <SelectValueText placeholder="Currency" />
+                    </SelectTriggerButton>
+                    <SelectContent>
+                      {CURRENCY_OPTIONS.map((currency) => (
+                        <SelectItem key={currency.value} value={currency.value}>
+                          {currency.value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="border-0 shadow-none focus-visible:ring-0"
+                    inputMode="decimal"
+                    placeholder="60000"
+                    {...register("salaryExpectation")}
+                  />
+                </div>
+              </Field>
 
-            <Field
-              error={errors.salaryOffer?.message}
-              label="Salary offer"
-              name="salaryOffer"
-            >
-              <Input
-                inputMode="text"
-                placeholder="EUR 58k"
-                {...register("salaryOffer")}
-              />
-            </Field>
+              <Field
+                error={errors.salaryOffer?.message ?? errors.salaryOfferCurrency?.message}
+                label="Salary offer"
+                name="salaryOffer"
+              >
+                <div className="grid grid-cols-[124px_minmax(0,1fr)] rounded-md border border-input bg-background shadow-sm transition-[border-color,box-shadow] focus-within:border-foreground focus-within:ring-3 focus-within:ring-ring/25">
+                  <Select
+                    name="salaryOfferCurrency"
+                    onValueChange={(value) => {
+                      if (value) {
+                        setValue("salaryOfferCurrency", value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                    value={selectedSalaryOfferCurrency}
+                  >
+                    <SelectTriggerButton className="h-11 rounded-none rounded-l-md border-0 border-r border-input shadow-none focus-visible:ring-0">
+                      <SelectValueText placeholder="Currency" />
+                    </SelectTriggerButton>
+                    <SelectContent>
+                      {CURRENCY_OPTIONS.map((currency) => (
+                        <SelectItem key={currency.value} value={currency.value}>
+                          {currency.value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="border-0 shadow-none focus-visible:ring-0"
+                    inputMode="decimal"
+                    placeholder="58000"
+                    {...register("salaryOffer")}
+                  />
+                </div>
+              </Field>
+            </div>
 
             <Field error={errors.status?.message} label="Status" name="status">
               <Select
@@ -357,7 +477,7 @@ export function ApplicationTracker() {
               <DialogCloseButton disabled={isSubmitting} type="button">
                 Cancel
               </DialogCloseButton>
-              <Button disabled={isSubmitting} type="submit">
+              <Button disabled={isSubmitting || isLoadingSettings} type="submit">
                 {isSubmitting ? "Saving..." : "Save application"}
               </Button>
             </DialogFooter>
@@ -410,4 +530,14 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Something went wrong while talking to the local database.";
+}
+
+function formatSalaryValue(value: string | undefined, currency: string) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return `${currency} ${trimmed}`;
 }

@@ -107,6 +107,13 @@ pub struct SearchFilters {
     pub statuses: Option<Vec<String>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    pub preferred_currency: String,
+    pub updated_at: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCompanyInput {
@@ -181,4 +188,10 @@ pub struct CreateTrackedApplicationInput {
     pub applied_at: Option<String>,
     pub first_response_at: Option<String>,
     pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAppSettingsInput {
+    pub preferred_currency: String,
 }

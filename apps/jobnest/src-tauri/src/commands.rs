@@ -3,10 +3,10 @@ use tauri::State;
 use crate::{
     db::Database,
     models::{
-        Application, ApplicationListItem, Company, Contact, CreateApplicationInput,
+        AppSettings, Application, ApplicationListItem, Company, Contact, CreateApplicationInput,
         CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
         CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
-        UpdateApplicationStatusInput,
+        UpdateApplicationStatusInput, UpdateAppSettingsInput,
     },
     AppState,
 };
@@ -126,6 +126,36 @@ pub async fn list_applications(
     state
         .db
         .list_applications()
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn get_app_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
+    state
+        .db
+        .get_app_settings()
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn update_app_settings(
+    input: UpdateAppSettingsInput,
+    state: State<'_, AppState>,
+) -> Result<AppSettings, String> {
+    state
+        .db
+        .update_app_settings(input)
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn reset_app_data(state: State<'_, AppState>) -> Result<AppSettings, String> {
+    state
+        .db
+        .reset_app_data()
         .await
         .map_err(|err| err.to_string())
 }

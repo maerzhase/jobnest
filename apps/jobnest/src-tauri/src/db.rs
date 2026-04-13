@@ -11,9 +11,10 @@ use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 use uuid::Uuid;
 
 use crate::models::{
-    Application, ApplicationListItem, Company, Contact, CreateApplicationInput, CreateCompanyInput,
-    CreateContactInput, CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, Note,
-    Role, SearchFilters, SearchResult, UpdateApplicationStatusInput,
+    AppSettings, Application, ApplicationListItem, Company, Contact, CreateApplicationInput,
+    CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
+    CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
+    UpdateApplicationStatusInput, UpdateAppSettingsInput,
 };
 
 const ENTITY_APPLICATION: &str = "application";
@@ -26,6 +27,7 @@ const ENTITY_COMPANY: &str = "company";
 const ENTITY_CONTACT: &str = "contact";
 const ENTITY_NOTE: &str = "note";
 const ENTITY_ROLE: &str = "role";
+const DEFAULT_PREFERRED_CURRENCY: &str = "EUR";
 
 type AppResult<T> = Result<T, AppError>;
 
@@ -605,6 +607,83 @@ impl Database {
             .collect())
     }
 
+    pub async fn get_app_settings(&self) -> AppResult<AppSettings> {
+        let row = sqlx::query(
+            "SELECT preferred_currency, updated_at FROM app_settings WHERE id = 1",
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(AppSettings {
+            preferred_currency: row.get("preferred_currency"),
+            updated_at: row.get("updated_at"),
+        })
+    }
+
+    pub async fn update_app_settings(
+        &self,
+        input: UpdateAppSettingsInput,
+    ) -> AppResult<AppSettings> {
+        let now = now_utc();
+        let preferred_currency = normalize_currency_code(&input.preferred_currency);
+
+        sqlx::query(
+            r#"
+            INSERT INTO app_settings (id, preferred_currency, updated_at)
+            VALUES (1, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                preferred_currency = excluded.preferred_currency,
+                updated_at = excluded.updated_at
+            "#,
+        )
+        .bind(&preferred_currency)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(AppSettings {
+            preferred_currency,
+            updated_at: now,
+        })
+    }
+
+    pub async fn reset_app_data(&self) -> AppResult<AppSettings> {
+        let now = now_utc();
+        let mut transaction = self.pool.begin().await?;
+
+        for statement in [
+            "DELETE FROM application_contacts",
+            "DELETE FROM attachments",
+            "DELETE FROM tasks",
+            "DELETE FROM stage_events",
+            "DELETE FROM notes",
+            "DELETE FROM contacts",
+            "DELETE FROM applications",
+            "DELETE FROM roles",
+            "DELETE FROM companies",
+            "DELETE FROM search_documents",
+            "DELETE FROM search_index",
+            "DELETE FROM app_settings",
+        ] {
+            sqlx::query(statement).execute(&mut *transaction).await?;
+        }
+
+        sqlx::query(
+            "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)",
+        )
+        .bind(DEFAULT_PREFERRED_CURRENCY)
+        .bind(&now)
+        .execute(&mut *transaction)
+        .await?;
+
+        transaction.commit().await?;
+
+        Ok(AppSettings {
+            preferred_currency: DEFAULT_PREFERRED_CURRENCY.to_owned(),
+            updated_at: now,
+        })
+    }
+
     async fn upsert_search_document_for_company(&self, company_id: &str) -> AppResult<()> {
         let row = sqlx::query(
             "SELECT name, website, location, industry, updated_at FROM companies WHERE id = ?",
@@ -951,6 +1030,16 @@ fn trim_to_option(value: Option<String>) -> Option<String> {
             Some(trimmed.to_owned())
         }
     })
+}
+
+fn normalize_currency_code(value: &str) -> String {
+    let trimmed = value.trim();
+
+    if trimmed.is_empty() {
+        return DEFAULT_PREFERRED_CURRENCY.to_owned();
+    }
+
+    trimmed.to_ascii_uppercase()
 }
 
 fn normalize_application_status(input: &str) -> AppResult<String> {
