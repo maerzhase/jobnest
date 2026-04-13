@@ -2022,24 +2022,15 @@ dependencies = [
 name = "jobnest"
 version = "0.1.0"
 dependencies = [
- "jobnest-db",
+ "chrono",
  "serde",
  "serde_json",
+ "sqlx",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-opener",
-]
-
-[[package]]
-name = "jobnest-db"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "serde",
- "serde_json",
- "sqlx",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",

@@ -117,16 +117,7 @@ pub fn run() {
             let menu = build_menu(app)?;
             app.set_menu(menu)?;
 
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .map_err(|_| -> Box<dyn std::error::Error> {
-                    "failed to resolve app data directory".into()
-                })?;
-            std::fs::create_dir_all(&app_data_dir)?;
-            let db_path = app_data_dir.join("jobnest.sqlite");
-
-            let db = tauri::async_runtime::block_on(Database::new(&db_path))
+            let db = tauri::async_runtime::block_on(Database::new(app.handle()))
                 .map_err(|err| -> Box<dyn std::error::Error> { Box::new(err) })?;
 
             app.manage(AppState { db });
@@ -166,9 +157,7 @@ pub fn run() {
                 let _ = navigate_main_window(app, "/");
             }
             _ => {}
-        });
-
-    let builder = builder
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
