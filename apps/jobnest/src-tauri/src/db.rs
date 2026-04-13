@@ -17,6 +17,11 @@ use crate::models::{
 };
 
 const ENTITY_APPLICATION: &str = "application";
+const APPLICATION_STATUS_SAVED: &str = "saved";
+const APPLICATION_STATUS_APPLIED: &str = "applied";
+const APPLICATION_STATUS_INTERVIEW: &str = "interview";
+const APPLICATION_STATUS_OFFER: &str = "offer";
+const APPLICATION_STATUS_REJECTED: &str = "rejected";
 const ENTITY_COMPANY: &str = "company";
 const ENTITY_CONTACT: &str = "contact";
 const ENTITY_NOTE: &str = "note";
@@ -41,6 +46,8 @@ pub enum AppError {
     Io(#[from] std::io::Error),
     #[error("invalid search query")]
     InvalidSearchQuery,
+    #[error("invalid application status: {0}")]
+    InvalidApplicationStatus(String),
 }
 
 #[derive(Debug, Clone)]
@@ -174,12 +181,18 @@ impl Database {
         input: CreateApplicationInput,
     ) -> AppResult<Application> {
         let now = now_utc();
+        let status = normalize_application_status(&input.status)?;
         let application = Application {
             id: new_id(),
             role_id: input.role_id,
-            status: input.status.trim().to_owned(),
-            applied_at: trim_to_option(input.applied_at),
+            status: status.clone(),
+            applied_at: trim_to_option(input.applied_at)
+                .or_else(|| should_set_applied_at(&status).then(|| now.clone())),
+            first_response_at: trim_to_option(input.first_response_at)
+                .or_else(|| should_set_first_response_at(&status).then(|| now.clone())),
             deadline_at: trim_to_option(input.deadline_at),
+            salary_expectation: trim_to_option(input.salary_expectation),
+            salary_offer: trim_to_option(input.salary_offer),
             last_activity_at: now.clone(),
             priority: input.priority.unwrap_or(0),
             archived_at: None,
@@ -190,17 +203,21 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO applications (
-                id, role_id, status, applied_at, deadline_at, last_activity_at,
-                priority, archived_at, created_at, updated_at
+                id, role_id, status, applied_at, first_response_at, deadline_at,
+                salary_expectation, salary_offer, last_activity_at, priority,
+                archived_at, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&application.id)
         .bind(&application.role_id)
         .bind(&application.status)
         .bind(&application.applied_at)
+        .bind(&application.first_response_at)
         .bind(&application.deadline_at)
+        .bind(&application.salary_expectation)
+        .bind(&application.salary_offer)
         .bind(&application.last_activity_at)
         .bind(application.priority)
         .bind(&application.archived_at)
@@ -246,7 +263,7 @@ impl Database {
                 company_id: company.id,
                 title: input.role_title,
                 job_board: None,
-                source_url: None,
+                source_url: Some(input.job_post_url),
                 employment_type: None,
                 location_text: None,
                 salary_text: None,
@@ -257,12 +274,26 @@ impl Database {
         let application = self
             .create_application(CreateApplicationInput {
                 role_id: role.id,
-                status: input.status.unwrap_or_else(|| "applied".to_owned()),
-                applied_at: trim_to_option(input.applied_at).or_else(|| Some(now_utc())),
+                status: input
+                    .status
+                    .unwrap_or_else(|| APPLICATION_STATUS_SAVED.to_owned()),
+                applied_at: input.applied_at,
+                first_response_at: input.first_response_at,
                 deadline_at: None,
+                salary_expectation: input.salary_expectation,
+                salary_offer: input.salary_offer,
                 priority: Some(0),
             })
             .await?;
+
+        if let Some(notes) = trim_to_option(input.notes) {
+            self.create_note(CreateNoteInput {
+                application_id: application.id.clone(),
+                body: notes,
+                kind: Some("general".to_owned()),
+            })
+            .await?;
+        }
 
         self.get_application_list_item(&application.id).await
     }
@@ -272,19 +303,27 @@ impl Database {
         input: UpdateApplicationStatusInput,
     ) -> AppResult<Application> {
         let current = sqlx::query(
-            "SELECT role_id, status, applied_at, deadline_at, last_activity_at, priority, archived_at, created_at, updated_at FROM applications WHERE id = ?",
+            "SELECT role_id, status, applied_at, first_response_at, deadline_at, salary_expectation, salary_offer, last_activity_at, priority, archived_at, created_at, updated_at FROM applications WHERE id = ?",
         )
         .bind(&input.application_id)
         .fetch_one(&self.pool)
         .await?;
 
         let now = now_utc();
-        let next_status = input.status.trim().to_owned();
+        let next_status = normalize_application_status(&input.status)?;
+        let applied_at = current
+            .get::<Option<String>, _>("applied_at")
+            .or_else(|| should_set_applied_at(&next_status).then(|| now.clone()));
+        let first_response_at = current
+            .get::<Option<String>, _>("first_response_at")
+            .or_else(|| should_set_first_response_at(&next_status).then(|| now.clone()));
 
         sqlx::query(
-            "UPDATE applications SET status = ?, last_activity_at = ?, updated_at = ? WHERE id = ?",
+            "UPDATE applications SET status = ?, applied_at = ?, first_response_at = ?, last_activity_at = ?, updated_at = ? WHERE id = ?",
         )
         .bind(&next_status)
+        .bind(&applied_at)
+        .bind(&first_response_at)
         .bind(&now)
         .bind(&now)
         .bind(&input.application_id)
@@ -310,8 +349,11 @@ impl Database {
             id: input.application_id,
             role_id: current.get("role_id"),
             status: next_status,
-            applied_at: current.get("applied_at"),
+            applied_at,
+            first_response_at,
             deadline_at: current.get("deadline_at"),
+            salary_expectation: current.get("salary_expectation"),
+            salary_offer: current.get("salary_offer"),
             last_activity_at: now.clone(),
             priority: current.get("priority"),
             archived_at: current.get("archived_at"),
@@ -520,8 +562,19 @@ impl Database {
                 a.id,
                 c.name AS company_name,
                 r.title AS role_title,
+                r.source_url AS job_post_url,
+                a.salary_expectation,
+                a.salary_offer,
                 a.status,
                 a.applied_at,
+                a.first_response_at,
+                (
+                    SELECT n.body
+                    FROM notes n
+                    WHERE n.application_id = a.id
+                    ORDER BY n.updated_at DESC, n.created_at DESC
+                    LIMIT 1
+                ) AS notes,
                 a.updated_at,
                 a.archived_at
             FROM applications a
@@ -539,8 +592,13 @@ impl Database {
                 id: row.get("id"),
                 company_name: row.get("company_name"),
                 role_title: row.get("role_title"),
+                job_post_url: row.get("job_post_url"),
+                salary_expectation: row.get("salary_expectation"),
+                salary_offer: row.get("salary_offer"),
                 status: row.get("status"),
                 applied_at: row.get("applied_at"),
+                first_response_at: row.get("first_response_at"),
+                notes: row.get("notes"),
                 updated_at: row.get("updated_at"),
                 archived_at: row.get("archived_at"),
             })
@@ -630,9 +688,13 @@ impl Database {
                 a.status,
                 a.priority,
                 a.applied_at,
+                a.first_response_at,
                 a.deadline_at,
+                a.salary_expectation,
+                a.salary_offer,
                 a.updated_at,
                 r.title AS role_title,
+                r.source_url,
                 c.name AS company_name
             FROM applications a
             INNER JOIN roles r ON r.id = a.role_id
@@ -662,8 +724,12 @@ impl Database {
             title: format!("{role_title} at {company_name}"),
             subtitle: format!("Status: {status}"),
             body: join_parts([
+                row.get::<Option<String>, _>("source_url"),
                 row.get::<Option<String>, _>("applied_at"),
+                row.get::<Option<String>, _>("first_response_at"),
                 row.get::<Option<String>, _>("deadline_at"),
+                row.get::<Option<String>, _>("salary_expectation"),
+                row.get::<Option<String>, _>("salary_offer"),
                 Some(format!("Priority {}", row.get::<i64, _>("priority"))),
                 Some(notes_summary),
             ]),
@@ -826,8 +892,19 @@ impl Database {
                 a.id,
                 c.name AS company_name,
                 r.title AS role_title,
+                r.source_url AS job_post_url,
+                a.salary_expectation,
+                a.salary_offer,
                 a.status,
                 a.applied_at,
+                a.first_response_at,
+                (
+                    SELECT n.body
+                    FROM notes n
+                    WHERE n.application_id = a.id
+                    ORDER BY n.updated_at DESC, n.created_at DESC
+                    LIMIT 1
+                ) AS notes,
                 a.updated_at,
                 a.archived_at
             FROM applications a
@@ -844,8 +921,13 @@ impl Database {
             id: row.get("id"),
             company_name: row.get("company_name"),
             role_title: row.get("role_title"),
+            job_post_url: row.get("job_post_url"),
+            salary_expectation: row.get("salary_expectation"),
+            salary_offer: row.get("salary_offer"),
             status: row.get("status"),
             applied_at: row.get("applied_at"),
+            first_response_at: row.get("first_response_at"),
+            notes: row.get("notes"),
             updated_at: row.get("updated_at"),
             archived_at: row.get("archived_at"),
         })
@@ -869,6 +951,30 @@ fn trim_to_option(value: Option<String>) -> Option<String> {
             Some(trimmed.to_owned())
         }
     })
+}
+
+fn normalize_application_status(input: &str) -> AppResult<String> {
+    let normalized = input.trim().to_ascii_lowercase();
+
+    match normalized.as_str() {
+        APPLICATION_STATUS_SAVED
+        | APPLICATION_STATUS_APPLIED
+        | APPLICATION_STATUS_INTERVIEW
+        | APPLICATION_STATUS_OFFER
+        | APPLICATION_STATUS_REJECTED => Ok(normalized),
+        _ => Err(AppError::InvalidApplicationStatus(input.trim().to_owned())),
+    }
+}
+
+fn should_set_applied_at(status: &str) -> bool {
+    matches!(status, APPLICATION_STATUS_APPLIED)
+}
+
+fn should_set_first_response_at(status: &str) -> bool {
+    matches!(
+        status,
+        APPLICATION_STATUS_INTERVIEW | APPLICATION_STATUS_OFFER | APPLICATION_STATUS_REJECTED
+    )
 }
 
 fn join_parts<const N: usize>(parts: [Option<String>; N]) -> String {
@@ -953,7 +1059,10 @@ mod tests {
                 role_id: role.id,
                 status: "applied".to_owned(),
                 applied_at: Some("2026-04-13T09:00:00Z".to_owned()),
+                first_response_at: None,
                 deadline_at: None,
+                salary_expectation: None,
+                salary_offer: None,
                 priority: Some(2),
             })
             .await
@@ -1026,5 +1135,74 @@ mod tests {
 
         assert_eq!(after.len(), 1);
         assert_eq!(after[0].entity_id, company.id);
+    }
+
+    #[tokio::test]
+    async fn tracked_application_stores_mvp_fields_and_status_timestamps() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        let saved = db
+            .create_tracked_application(CreateTrackedApplicationInput {
+                job_post_url: "https://jobs.example.com/product-designer".to_owned(),
+                company_name: "Acme".to_owned(),
+                role_title: "Product Designer".to_owned(),
+                salary_expectation: Some("EUR 60k".to_owned()),
+                salary_offer: None,
+                status: Some(APPLICATION_STATUS_SAVED.to_owned()),
+                applied_at: None,
+                first_response_at: None,
+                notes: Some("Strong portfolio match.".to_owned()),
+            })
+            .await
+            .expect("saved application");
+
+        assert_eq!(saved.status, APPLICATION_STATUS_SAVED);
+        assert!(saved.applied_at.is_none());
+        assert!(saved.first_response_at.is_none());
+        assert_eq!(
+            saved.job_post_url.as_deref(),
+            Some("https://jobs.example.com/product-designer")
+        );
+        assert_eq!(saved.salary_expectation.as_deref(), Some("EUR 60k"));
+        assert_eq!(saved.notes.as_deref(), Some("Strong portfolio match."));
+
+        let applied = db
+            .update_application_status(UpdateApplicationStatusInput {
+                application_id: saved.id.clone(),
+                status: APPLICATION_STATUS_APPLIED.to_owned(),
+                source: Some("user".to_owned()),
+            })
+            .await
+            .expect("applied application");
+
+        assert_eq!(applied.status, APPLICATION_STATUS_APPLIED);
+        assert!(applied.applied_at.is_some());
+        assert!(applied.first_response_at.is_none());
+
+        let updated = db
+            .update_application_status(UpdateApplicationStatusInput {
+                application_id: saved.id.clone(),
+                status: APPLICATION_STATUS_INTERVIEW.to_owned(),
+                source: Some("user".to_owned()),
+            })
+            .await
+            .expect("updated application");
+
+        assert_eq!(updated.status, APPLICATION_STATUS_INTERVIEW);
+        assert!(updated.applied_at.is_some());
+        assert!(updated.first_response_at.is_some());
+
+        let stage_events = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM stage_events WHERE application_id = ?",
+        )
+        .bind(&saved.id)
+        .fetch_one(&db.pool)
+        .await
+        .expect("stage events");
+
+        assert_eq!(stage_events, 3);
     }
 }

@@ -12,3 +12,17 @@ export type { FieldProps } from "./components/field";
 export { Field } from "./components/field";
 export type { InputProps } from "./components/input";
 export { Input } from "./components/input";
+export type {
+  SelectContentProps,
+  SelectItemProps,
+  SelectProps,
+  SelectTriggerButtonProps,
+  SelectValueTextProps,
+} from "./components/select";
+export {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTriggerButton,
+  SelectValueText,
+} from "./components/select";

@@ -35,7 +35,10 @@ pub struct Application {
     pub role_id: String,
     pub status: String,
     pub applied_at: Option<String>,
+    pub first_response_at: Option<String>,
     pub deadline_at: Option<String>,
+    pub salary_expectation: Option<String>,
+    pub salary_offer: Option<String>,
     pub last_activity_at: String,
     pub priority: i64,
     pub archived_at: Option<String>,
@@ -49,8 +52,13 @@ pub struct ApplicationListItem {
     pub id: String,
     pub company_name: String,
     pub role_title: String,
+    pub job_post_url: Option<String>,
+    pub salary_expectation: Option<String>,
+    pub salary_offer: Option<String>,
     pub status: String,
     pub applied_at: Option<String>,
+    pub first_response_at: Option<String>,
+    pub notes: Option<String>,
     pub updated_at: String,
     pub archived_at: Option<String>,
 }
@@ -127,7 +135,10 @@ pub struct CreateApplicationInput {
     pub role_id: String,
     pub status: String,
     pub applied_at: Option<String>,
+    pub first_response_at: Option<String>,
     pub deadline_at: Option<String>,
+    pub salary_expectation: Option<String>,
+    pub salary_offer: Option<String>,
     pub priority: Option<i64>,
 }
 
@@ -161,8 +172,13 @@ pub struct UpdateApplicationStatusInput {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrackedApplicationInput {
+    pub job_post_url: String,
     pub company_name: String,
     pub role_title: String,
+    pub salary_expectation: Option<String>,
+    pub salary_offer: Option<String>,
     pub status: Option<String>,
     pub applied_at: Option<String>,
+    pub first_response_at: Option<String>,
+    pub notes: Option<String>,
 }

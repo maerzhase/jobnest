@@ -12,6 +12,11 @@ import {
   DialogTitleText,
   Field,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTriggerButton,
+  SelectValueText,
 } from "@acme/ui";
 import { invoke } from "@tauri-apps/api/core";
 import { startTransition, useEffect, useState } from "react";
@@ -19,8 +24,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const createApplicationSchema = z.object({
+  jobPostUrl: z.string().trim().url("Enter a valid job post URL"),
   companyName: z.string().trim().min(1, "Company is required"),
   roleTitle: z.string().trim().min(1, "Role title is required"),
+  salaryExpectation: z.string().optional(),
+  salaryOffer: z.string().optional(),
+  status: z.enum(["saved", "applied", "interview", "offer", "rejected"]),
+  notes: z.string().optional(),
 });
 
 type CreateApplicationValues = z.infer<typeof createApplicationSchema>;
@@ -29,16 +39,36 @@ type ApplicationListItem = {
   id: string;
   companyName: string;
   roleTitle: string;
+  jobPostUrl: string | null;
+  salaryExpectation: string | null;
+  salaryOffer: string | null;
   status: string;
   appliedAt: string | null;
+  firstResponseAt: string | null;
+  notes: string | null;
   updatedAt: string;
   archivedAt: string | null;
 };
 
 const formDefaults: CreateApplicationValues = {
+  jobPostUrl: "",
   companyName: "",
   roleTitle: "",
+  salaryExpectation: "",
+  salaryOffer: "",
+  status: "saved",
+  notes: "",
 };
+
+const STATUS_OPTIONS = [
+  { label: "Saved", value: "saved" },
+  { label: "Applied", value: "applied" },
+  { label: "Interview", value: "interview" },
+  { label: "Offer", value: "offer" },
+  { label: "Rejected", value: "rejected" },
+] as const;
+
+type ApplicationStatus = (typeof STATUS_OPTIONS)[number]["value"];
 
 export function ApplicationTracker() {
   const [applications, setApplications] = useState<ApplicationListItem[]>([]);
@@ -52,10 +82,14 @@ export function ApplicationTracker() {
     handleSubmit,
     register,
     reset,
+    setValue,
+    watch,
   } = useForm<CreateApplicationValues>({
     defaultValues: formDefaults,
     resolver: zodResolver(createApplicationSchema),
   });
+
+  const selectedStatus = watch("status");
 
   useEffect(() => {
     void loadApplications();
@@ -81,10 +115,13 @@ export function ApplicationTracker() {
     try {
       const created = await invoke<ApplicationListItem>("create_tracked_application", {
         input: {
+          jobPostUrl: values.jobPostUrl,
           companyName: values.companyName,
           roleTitle: values.roleTitle,
-          status: "applied",
-          appliedAt: new Date().toISOString(),
+          salaryExpectation: values.salaryExpectation,
+          salaryOffer: values.salaryOffer,
+          status: values.status,
+          notes: values.notes,
         },
       });
 
@@ -150,12 +187,39 @@ export function ApplicationTracker() {
                     </p>
                   </div>
                   <span className="bg-muted inline-flex rounded-md px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                    {application.status}
+                    {formatStatusLabel(application.status)}
                   </span>
                 </div>
-                <p className="text-muted-foreground mt-4 text-sm">
-                  Added {formatDate(application.appliedAt ?? application.updatedAt)}
-                </p>
+                <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
+                  {application.jobPostUrl ? (
+                    <p>
+                      <a
+                        className="text-foreground underline underline-offset-4"
+                        href={application.jobPostUrl}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Open job post
+                      </a>
+                    </p>
+                  ) : null}
+                  {application.salaryExpectation || application.salaryOffer ? (
+                    <p>
+                      {[
+                        application.salaryExpectation
+                          ? `Expectation: ${application.salaryExpectation}`
+                          : null,
+                        application.salaryOffer
+                          ? `Offer: ${application.salaryOffer}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
+                  <p>{getTimelineLabel(application)}</p>
+                  {application.notes ? <p>Notes: {application.notes}</p> : null}
+                </div>
               </li>
             ))}
           </ul>
@@ -184,11 +248,23 @@ export function ApplicationTracker() {
             </p>
             <DialogTitleText>Add a role to track</DialogTitleText>
             <DialogDescriptionText>
-              Add the company and role title to start tracking this application.
+              Capture the core details for this application and keep the timeline local.
             </DialogDescriptionText>
           </DialogHeader>
 
           <form className="grid gap-5" onSubmit={onSubmit}>
+            <Field
+              error={errors.jobPostUrl?.message}
+              label="Link to job post"
+              name="jobPostUrl"
+            >
+              <Input
+                autoComplete="url"
+                placeholder="https://jobs.example.com/role"
+                {...register("jobPostUrl")}
+              />
+            </Field>
+
             <Field
               error={errors.companyName?.message}
               label="Company"
@@ -203,13 +279,71 @@ export function ApplicationTracker() {
 
             <Field
               error={errors.roleTitle?.message}
-              label="Role title"
+              label="Role"
               name="roleTitle"
             >
               <Input
                 autoComplete="organization-title"
                 placeholder="Product Designer"
                 {...register("roleTitle")}
+              />
+            </Field>
+
+            <Field
+              error={errors.salaryExpectation?.message}
+              label="Salary expectation"
+              name="salaryExpectation"
+            >
+              <Input
+                inputMode="text"
+                placeholder="EUR 60k"
+                {...register("salaryExpectation")}
+              />
+            </Field>
+
+            <Field
+              error={errors.salaryOffer?.message}
+              label="Salary offer"
+              name="salaryOffer"
+            >
+              <Input
+                inputMode="text"
+                placeholder="EUR 58k"
+                {...register("salaryOffer")}
+              />
+            </Field>
+
+            <Field error={errors.status?.message} label="Status" name="status">
+              <Select
+                name="status"
+                onValueChange={(value) => {
+                  if (value) {
+                    setValue("status", value as ApplicationStatus, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }
+                }}
+                value={selectedStatus}
+              >
+                <SelectTriggerButton>
+                  <SelectValueText placeholder="Select a status" />
+                </SelectTriggerButton>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field error={errors.notes?.message} label="Notes" name="notes">
+              <textarea
+                className="flex min-h-28 w-full rounded-md border border-input bg-background px-3 py-3 text-sm text-foreground shadow-sm transition-[border-color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-3 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="Add context, recruiter details, or next steps."
+                {...register("notes")}
               />
             </Field>
 
@@ -244,6 +378,26 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
   }).format(parsed);
+}
+
+function formatStatusLabel(value: string) {
+  return STATUS_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+function getTimelineLabel(application: ApplicationListItem) {
+  if (application.firstResponseAt) {
+    if (application.appliedAt) {
+      return `Applied ${formatDate(application.appliedAt)} · First answer ${formatDate(application.firstResponseAt)}`;
+    }
+
+    return `First answer ${formatDate(application.firstResponseAt)}`;
+  }
+
+  if (application.appliedAt) {
+    return `Applied ${formatDate(application.appliedAt)}`;
+  }
+
+  return `Saved ${formatDate(application.updatedAt)}`;
 }
 
 function getErrorMessage(error: unknown) {
