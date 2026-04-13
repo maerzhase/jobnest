@@ -4,10 +4,6 @@
   "description": "Capability for the default window",
   "windows": ["main"],
   "permissions": [
-    "core:window:allow-close",
-    "dialog:allow-save",
-    "dialog:allow-open",
-    "fs:allow-read",
-    "fs:write-all"
+    "core:window:allow-close"
   ]
 }

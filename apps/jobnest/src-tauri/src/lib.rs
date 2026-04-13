@@ -157,10 +157,18 @@ pub fn run() {
                 let _ = navigate_main_window(app, "/");
             }
             _ => {}
-        })
-        .plugin(tauri_plugin_opener::init())
+        });
+
+    #[cfg(feature = "tauri-plugins")]
+    let builder = builder
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_fs::init());
+
+    #[cfg(not(feature = "tauri-plugins"))]
+    let builder = builder;
+
+    let builder = builder
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::create_company,
             commands::create_role,
