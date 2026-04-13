@@ -1,8 +1,7 @@
-<p align="center">
-  <img src="./apps/jobnest/public/icon-transparent.png" alt="JobNest logo" width="120" />
-</p>
-
-# JobNest
+<h1>
+  <img src="./apps/jobnest/public/icon-transparent.png" alt="JobNest logo" width="42" valign="middle" />
+  JobNest
+</h1>
 
 JobNest is a privacy-first job application tracker built for people who want a simple way to manage their job search without handing their data to another SaaS.
 
