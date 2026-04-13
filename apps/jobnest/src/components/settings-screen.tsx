@@ -47,6 +47,9 @@ export function SettingsScreen() {
   const [confirmationInput, setConfirmationInput] = useState("");
   const [isResetting, setIsResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsThemeReady(true);
@@ -119,6 +122,60 @@ export function SettingsScreen() {
     }
   }
 
+  async function handleExport() {
+    setIsExporting(true);
+    setSaveMessage(null);
+    setSettingsError(null);
+
+    try {
+      const exportData = await invoke("export_app_data");
+
+      // Create a blob with the exported data
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      // Create a link and trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `jobnest-backup-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSaveMessage("Data exported successfully.");
+    } catch (error) {
+      setSettingsError(getErrorMessage(error));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function handleImport(file: File) {
+    setIsImporting(true);
+    setImportError(null);
+    setSaveMessage(null);
+    setSettingsError(null);
+
+    try {
+      const fileContent = await file.text();
+      const importData = JSON.parse(fileContent);
+
+      await invoke("import_app_data", { input: importData });
+
+      startTransition(() => {
+        loadSettings();
+      });
+
+      setSaveMessage("Data imported successfully.");
+    } catch (error) {
+      setImportError(getErrorMessage(error));
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   return (
     <>
       <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
@@ -159,7 +216,11 @@ export function SettingsScreen() {
                         : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
                     ].join(" ")}
                     key={section.value}
-                    onClick={() => setActiveSection(section.value)}
+                    onClick={() => {
+                      setActiveSection(section.value);
+                      setImportError(null);
+                      setResetError(null);
+                    }}
                     type="button"
                   >
                     <span className="block text-sm font-medium">
@@ -182,9 +243,9 @@ export function SettingsScreen() {
           </aside>
 
           <div className="min-w-0">
-            {settingsError ? (
+            {settingsError || importError ? (
               <p className="mb-6 border-l-2 border-red-500/50 pl-4 text-sm leading-6 text-red-700 dark:text-red-300">
-                {settingsError}
+                {settingsError || importError}
               </p>
             ) : null}
 
@@ -341,11 +402,10 @@ export function SettingsScreen() {
                     Data
                   </p>
                   <h3 className="text-2xl font-semibold tracking-tight">
-                    Reset local database
+                    Manage your data
                   </h3>
                   <p className="text-muted-foreground text-sm leading-6">
-                    This removes applications, companies, roles, notes, and
-                    resets app settings back to their defaults.
+                    Export your data as a backup or import from a previous backup.
                   </p>
                 </div>
 
@@ -353,10 +413,87 @@ export function SettingsScreen() {
                   <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-start">
                     <div>
                       <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Destructive action
+                        Export
                       </h4>
                       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                        There is no undo for this reset. You will need to
+                        Download a complete backup of all your data as a JSON
+                        file.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="max-w-xl text-sm leading-6 text-foreground">
+                        Create a backup of all applications, companies, roles,
+                        contacts, notes, and settings.
+                      </p>
+                      <div>
+                        <Button
+                          disabled={isExporting}
+                          onClick={() => void handleExport()}
+                          type="button"
+                          variant="secondary"
+                        >
+                          {isExporting ? "Exporting..." : "Export data"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 border-t border-border pt-6">
+                  <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-start">
+                    <div>
+                      <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Import
+                      </h4>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        Restore data from a previously exported backup file.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="max-w-xl text-sm leading-6 text-foreground">
+                        Select a JSON backup file to restore your data. This
+                        will replace all current data.
+                      </p>
+                      <div>
+                        <input
+                          accept=".json"
+                          disabled={isImporting}
+                          onChange={(e) => {
+                            const file = e.currentTarget.files?.[0];
+                            if (file) {
+                              void handleImport(file);
+                              e.currentTarget.value = "";
+                            }
+                          }}
+                          style={{ display: "none" }}
+                          type="file"
+                          id="import-file-input"
+                        />
+                        <Button
+                          disabled={isImporting}
+                          onClick={() =>
+                            document.getElementById("import-file-input")?.click()
+                          }
+                          type="button"
+                          variant="secondary"
+                        >
+                          {isImporting ? "Importing..." : "Import data"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 border-t border-border pt-6">
+                  <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-start">
+                    <div>
+                      <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Reset
+                      </h4>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        There is no undo for this action. You will need to
                         confirm it by typing the phrase exactly.
                       </p>
                     </div>
