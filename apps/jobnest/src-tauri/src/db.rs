@@ -11,10 +11,10 @@ use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 use uuid::Uuid;
 
 use crate::models::{
-    AppSettings, Application, ApplicationListItem, Company, Contact, CreateApplicationInput,
-    CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
-    CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
-    UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
+    AppSettings, Application, ApplicationListItem, ApplicationStatusGroup, Company, Contact,
+    CreateApplicationInput, CreateCompanyInput, CreateContactInput, CreateNoteInput,
+    CreateRoleInput, CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
+    UpdateAppSettingsInput, UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
 };
 
 const ENTITY_APPLICATION: &str = "application";
@@ -522,10 +522,11 @@ impl Database {
         let role_id: String = current.get("role_id");
         let company_id: String = current.get("company_id");
 
-        let note_ids = sqlx::query_scalar::<_, String>("SELECT id FROM notes WHERE application_id = ?")
-            .bind(application_id)
-            .fetch_all(&self.pool)
-            .await?;
+        let note_ids =
+            sqlx::query_scalar::<_, String>("SELECT id FROM notes WHERE application_id = ?")
+                .bind(application_id)
+                .fetch_all(&self.pool)
+                .await?;
 
         for note_id in &note_ids {
             self.delete_search_document(ENTITY_NOTE, note_id).await?;
@@ -562,7 +563,8 @@ impl Database {
                 .await?;
 
         if company_role_count == 0 {
-            self.delete_search_document(ENTITY_COMPANY, &company_id).await?;
+            self.delete_search_document(ENTITY_COMPANY, &company_id)
+                .await?;
             sqlx::query("DELETE FROM companies WHERE id = ?")
                 .bind(&company_id)
                 .execute(&self.pool)
@@ -767,7 +769,7 @@ impl Database {
         Ok(())
     }
 
-    pub async fn list_applications(&self) -> AppResult<Vec<ApplicationListItem>> {
+    pub async fn list_applications_grouped(&self) -> AppResult<Vec<ApplicationStatusGroup>> {
         let rows = sqlx::query(
             r#"
             SELECT
@@ -808,23 +810,26 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|row| ApplicationListItem {
-                id: row.get("id"),
-                company_name: row.get("company_name"),
-                role_title: row.get("role_title"),
-                job_post_url: row.get("job_post_url"),
-                salary_expectation: row.get("salary_expectation"),
-                salary_offer: row.get("salary_offer"),
-                status: row.get("status"),
-                applied_at: row.get("applied_at"),
-                first_response_at: row.get("first_response_at"),
-                notes: row.get("notes"),
-                updated_at: row.get("updated_at"),
-                archived_at: row.get("archived_at"),
-            })
-            .collect())
+        let mut groups: Vec<ApplicationStatusGroup> = Vec::new();
+
+        for row in rows {
+            let application = map_application_list_item(&row);
+            let application_status = application.status.clone();
+
+            if let Some(group) = groups.last_mut() {
+                if group.status == application_status {
+                    group.applications.push(application);
+                    continue;
+                }
+            }
+
+            groups.push(ApplicationStatusGroup {
+                status: application_status,
+                applications: vec![application],
+            });
+        }
+
+        Ok(groups)
     }
 
     pub async fn get_app_settings(&self) -> AppResult<AppSettings> {
@@ -907,7 +912,7 @@ impl Database {
         let now = now_utc();
 
         let company_rows = sqlx::query(
-            "SELECT id, name, website, location, industry, created_at, updated_at FROM companies"
+            "SELECT id, name, website, location, industry, created_at, updated_at FROM companies",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -994,11 +999,10 @@ impl Database {
             })
             .collect();
 
-        let note_rows = sqlx::query(
-            "SELECT id, application_id, body, kind, created_at, updated_at FROM notes"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let note_rows =
+            sqlx::query("SELECT id, application_id, body, kind, created_at, updated_at FROM notes")
+                .fetch_all(&self.pool)
+                .await?;
 
         let notes = note_rows
             .into_iter()
@@ -1253,7 +1257,7 @@ impl Database {
         // Insert or update app settings
         if let Some(settings) = &data.app_settings {
             sqlx::query(
-                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)"
+                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)",
             )
             .bind(&settings.preferred_currency)
             .bind(&settings.updated_at)
@@ -1261,7 +1265,7 @@ impl Database {
             .await?;
         } else {
             sqlx::query(
-                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)"
+                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)",
             )
             .bind(DEFAULT_PREFERRED_CURRENCY)
             .bind(&now)
@@ -1565,7 +1569,11 @@ impl Database {
         Ok(())
     }
 
-    async fn delete_search_document(&self, entity_type: &'static str, entity_id: &str) -> AppResult<()> {
+    async fn delete_search_document(
+        &self,
+        entity_type: &'static str,
+        entity_id: &str,
+    ) -> AppResult<()> {
         let document_id = sqlx::query_scalar::<_, String>(
             "SELECT id FROM search_documents WHERE entity_type = ? AND entity_id = ?",
         )
@@ -1625,20 +1633,24 @@ impl Database {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(ApplicationListItem {
-            id: row.get("id"),
-            company_name: row.get("company_name"),
-            role_title: row.get("role_title"),
-            job_post_url: row.get("job_post_url"),
-            salary_expectation: row.get("salary_expectation"),
-            salary_offer: row.get("salary_offer"),
-            status: row.get("status"),
-            applied_at: row.get("applied_at"),
-            first_response_at: row.get("first_response_at"),
-            notes: row.get("notes"),
-            updated_at: row.get("updated_at"),
-            archived_at: row.get("archived_at"),
-        })
+        Ok(map_application_list_item(&row))
+    }
+}
+
+fn map_application_list_item(row: &sqlx::sqlite::SqliteRow) -> ApplicationListItem {
+    ApplicationListItem {
+        id: row.get("id"),
+        company_name: row.get("company_name"),
+        role_title: row.get("role_title"),
+        job_post_url: row.get("job_post_url"),
+        salary_expectation: row.get("salary_expectation"),
+        salary_offer: row.get("salary_offer"),
+        status: row.get("status"),
+        applied_at: row.get("applied_at"),
+        first_response_at: row.get("first_response_at"),
+        notes: row.get("notes"),
+        updated_at: row.get("updated_at"),
+        archived_at: row.get("archived_at"),
     }
 }
 
@@ -1925,6 +1937,67 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn tracked_applications_are_listed_in_status_groups() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        db.create_tracked_application(CreateTrackedApplicationInput {
+            job_post_url: "https://jobs.example.com/frontend".to_owned(),
+            company_name: "Acme".to_owned(),
+            role_title: "Frontend Engineer".to_owned(),
+            salary_expectation: None,
+            salary_offer: None,
+            status: Some(APPLICATION_STATUS_APPLIED.to_owned()),
+            applied_at: None,
+            first_response_at: None,
+            notes: None,
+        })
+        .await
+        .expect("applied application");
+
+        db.create_tracked_application(CreateTrackedApplicationInput {
+            job_post_url: "https://jobs.example.com/platform".to_owned(),
+            company_name: "Orbit".to_owned(),
+            role_title: "Platform Engineer".to_owned(),
+            salary_expectation: None,
+            salary_offer: None,
+            status: Some(APPLICATION_STATUS_SAVED.to_owned()),
+            applied_at: None,
+            first_response_at: None,
+            notes: None,
+        })
+        .await
+        .expect("saved application");
+
+        db.create_tracked_application(CreateTrackedApplicationInput {
+            job_post_url: "https://jobs.example.com/design".to_owned(),
+            company_name: "North".to_owned(),
+            role_title: "Product Designer".to_owned(),
+            salary_expectation: None,
+            salary_offer: None,
+            status: Some(APPLICATION_STATUS_APPLIED.to_owned()),
+            applied_at: None,
+            first_response_at: None,
+            notes: None,
+        })
+        .await
+        .expect("second applied application");
+
+        let groups = db
+            .list_applications_grouped()
+            .await
+            .expect("list grouped applications");
+
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].status, APPLICATION_STATUS_APPLIED);
+        assert_eq!(groups[0].applications.len(), 2);
+        assert_eq!(groups[1].status, APPLICATION_STATUS_SAVED);
+        assert_eq!(groups[1].applications.len(), 1);
+    }
+
+    #[tokio::test]
     async fn tracked_application_can_be_updated_and_deleted() {
         let temp_dir = tempdir().expect("temp dir");
         let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
@@ -1975,8 +2048,11 @@ mod tests {
             .await
             .expect("delete application");
 
-        let applications = db.list_applications().await.expect("list applications");
-        assert!(applications.is_empty());
+        let groups = db
+            .list_applications_grouped()
+            .await
+            .expect("list applications");
+        assert!(groups.is_empty());
 
         let company_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM companies")
             .fetch_one(&db.pool)

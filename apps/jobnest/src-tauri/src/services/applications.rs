@@ -1,6 +1,9 @@
 use crate::{
     db::{AppError, Database},
-    models::{ApplicationListItem, CreateTrackedApplicationInput, UpdateTrackedApplicationInput},
+    models::{
+        ApplicationListItem, ApplicationStatusGroup, CreateTrackedApplicationInput,
+        UpdateTrackedApplicationInput,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -13,8 +16,8 @@ impl ApplicationsService {
         Self { db }
     }
 
-    pub async fn list(&self) -> Result<Vec<ApplicationListItem>, AppError> {
-        self.db.list_applications().await
+    pub async fn list(&self) -> Result<Vec<ApplicationStatusGroup>, AppError> {
+        self.db.list_applications_grouped().await
     }
 
     pub async fn create_tracked(

@@ -2,7 +2,10 @@
 
 import { Button } from "@jobnest/ui";
 import { startTransition, useCallback, useEffect, useState } from "react";
-import { applicationsApi } from "../../lib/api/applications";
+import {
+  applicationsApi,
+  type ApplicationStatusGroup,
+} from "../../lib/api/applications";
 import { settingsApi, type AppSettings } from "../../lib/api/settings";
 import { getErrorMessage } from "../../lib/error-handler";
 import {
@@ -21,7 +24,9 @@ type ApplicationDialogState =
   | { mode: "edit"; application: ApplicationListItem };
 
 export function ApplicationTracker() {
-  const [applications, setApplications] = useState<ApplicationListItem[]>([]);
+  const [applicationGroups, setApplicationGroups] = useState<
+    ApplicationStatusGroup[]
+  >([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
@@ -38,14 +43,18 @@ export function ApplicationTracker() {
     dialogState?.mode === "edit" ? dialogState.application : null;
   const isDialogOpen = dialogState !== null;
   const preferredCurrency = settings?.preferredCurrency ?? "EUR";
+  const totalApplications = applicationGroups.reduce(
+    (count, group) => count + group.applications.length,
+    0
+  );
 
   const loadApplications = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
 
     try {
-      const items = await applicationsApi.list();
-      setApplications(items);
+      const groups = await applicationsApi.list();
+      setApplicationGroups(groups);
     } catch (error) {
       setLoadError(getErrorMessage(error));
     } finally {
@@ -109,6 +118,12 @@ export function ApplicationTracker() {
     return getFormDefaults(preferredCurrency);
   }, [activeApplication, preferredCurrency]);
 
+  const refreshApplications = useCallback(() => {
+    startTransition(() => {
+      void loadApplications();
+    });
+  }, [loadApplications]);
+
   const onSubmit = useCallback(
     async (values: CreateApplicationValues) => {
       setSubmitError(null);
@@ -116,7 +131,7 @@ export function ApplicationTracker() {
 
       try {
         if (activeApplication) {
-          const updated = await applicationsApi.update({
+          await applicationsApi.update({
             applicationId: activeApplication.id,
             jobPostUrl: values.jobPostUrl,
             companyName: values.companyName,
@@ -134,17 +149,11 @@ export function ApplicationTracker() {
           });
 
           closeDialog();
-          startTransition(() => {
-            setApplications((current) =>
-              current.map((application) =>
-                application.id === updated.id ? updated : application
-              )
-            );
-          });
+          refreshApplications();
           return;
         }
 
-        const created = await applicationsApi.create({
+        await applicationsApi.create({
           jobPostUrl: values.jobPostUrl,
           companyName: values.companyName,
           roleTitle: values.roleTitle,
@@ -163,16 +172,14 @@ export function ApplicationTracker() {
         });
 
         closeDialog();
-        startTransition(() => {
-          setApplications((current) => [created, ...current]);
-        });
+        refreshApplications();
       } catch (error) {
         setSubmitError(getErrorMessage(error));
       } finally {
         setIsSubmitting(false);
       }
     },
-    [activeApplication, closeDialog, preferredCurrency]
+    [activeApplication, closeDialog, preferredCurrency, refreshApplications]
   );
 
   const handleDelete = useCallback(async () => {
@@ -187,17 +194,13 @@ export function ApplicationTracker() {
       await applicationsApi.remove(activeApplication.id);
       setIsDeleteAlertOpen(false);
       closeDialog(true);
-      startTransition(() => {
-        setApplications((current) =>
-          current.filter((application) => application.id !== activeApplication.id)
-        );
-      });
+      refreshApplications();
     } catch (error) {
       setSubmitError(getErrorMessage(error));
     } finally {
       setIsDeleting(false);
     }
-  }, [activeApplication, closeDialog]);
+  }, [activeApplication, closeDialog, refreshApplications]);
 
   return (
     <>
@@ -205,7 +208,7 @@ export function ApplicationTracker() {
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">
-              Applications ({applications.length})
+              Applications ({totalApplications})
             </h2>
           </div>
           <div className="flex items-center gap-3">
@@ -222,7 +225,7 @@ export function ApplicationTracker() {
         ) : null}
 
         <ApplicationsList
-          applications={applications}
+          groups={applicationGroups}
           isLoading={isLoading}
           onEdit={openEditDialog}
         />

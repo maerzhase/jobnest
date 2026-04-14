@@ -1,6 +1,9 @@
 export { cn } from "./lib/cn";
 export type { ButtonProps } from "./components/button";
 export { Button } from "./components/button";
+export { Collapsible } from "./components/collapsible";
+export { CollapsiblePanel } from "./components/collapsible";
+export { CollapsibleTriggerButton } from "./components/collapsible";
 export { AlertDialog } from "./components/alert-dialog";
 export { AlertDialogCancelButton } from "./components/alert-dialog";
 export { AlertDialogContent } from "./components/alert-dialog";

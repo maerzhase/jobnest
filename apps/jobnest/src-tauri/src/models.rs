@@ -66,6 +66,13 @@ pub struct ApplicationListItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
+pub struct ApplicationStatusGroup {
+    pub status: String,
+    pub applications: Vec<ApplicationListItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct Contact {
     pub id: String,
     pub company_id: String,

@@ -31,18 +31,23 @@ describe("applicationsApi", () => {
   it("lists applications through the generated bindings", async () => {
     const applications = [
       {
-        id: "app_1",
-        companyName: "JobNest",
-        roleTitle: "Frontend Engineer",
-        jobPostUrl: null,
-        salaryExpectation: null,
-        salaryOffer: null,
         status: "saved",
-        appliedAt: null,
-        firstResponseAt: null,
-        notes: null,
-        updatedAt: "2026-04-14T00:00:00Z",
-        archivedAt: null,
+        applications: [
+          {
+            id: "app_1",
+            companyName: "JobNest",
+            roleTitle: "Frontend Engineer",
+            jobPostUrl: null,
+            salaryExpectation: null,
+            salaryOffer: null,
+            status: "saved",
+            appliedAt: null,
+            firstResponseAt: null,
+            notes: null,
+            updatedAt: "2026-04-14T00:00:00Z",
+            archivedAt: null,
+          },
+        ],
       },
     ];
 

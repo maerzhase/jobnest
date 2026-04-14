@@ -1,6 +1,7 @@
 import {
   commands,
   type ApplicationListItem,
+  type ApplicationStatusGroup,
   type CreateTrackedApplicationInput,
   type UpdateTrackedApplicationInput,
 } from "./bindings";
@@ -8,12 +9,13 @@ import { executeLocalApiCall } from "./client";
 
 export type {
   ApplicationListItem,
+  ApplicationStatusGroup,
   CreateTrackedApplicationInput,
   UpdateTrackedApplicationInput,
 };
 
 export const applicationsApi = {
-  list(): Promise<ApplicationListItem[]> {
+  list(): Promise<ApplicationStatusGroup[]> {
     return executeLocalApiCall(() => commands.listApplications());
   },
 

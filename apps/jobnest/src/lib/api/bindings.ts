@@ -22,7 +22,7 @@ export const commands = {
 	statuses: string[] | null,
 } | null, limit: number | null, offset: number | null) => __TAURI_INVOKE<SearchResult[]>("search", { query, filters, limit, offset }),
 	reindexSearch: () => __TAURI_INVOKE<null>("reindex_search"),
-	listApplications: () => __TAURI_INVOKE<ApplicationListItem[]>("list_applications"),
+	listApplications: () => __TAURI_INVOKE<ApplicationStatusGroup[]>("list_applications"),
 	getAppSettings: () => __TAURI_INVOKE<AppSettings>("get_app_settings"),
 	updateAppSettings: (input: UpdateAppSettingsInput) => __TAURI_INVOKE<AppSettings>("update_app_settings", { input }),
 	resetAppData: () => __TAURI_INVOKE<AppSettings>("reset_app_data"),
@@ -65,6 +65,11 @@ export type ApplicationListItem = {
 	notes: string | null,
 	updatedAt: string,
 	archivedAt: string | null,
+};
+
+export type ApplicationStatusGroup = {
+	status: string,
+	applications: ApplicationListItem[],
 };
 
 export type Attachment = {
