@@ -40,15 +40,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -57,11 +48,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pkg-config libglib2.0-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Check generated JobNest API bindings
-        run: pnpm --filter jobnest api:check
+        run: |
+          cargo run --manifest-path apps/jobnest/src-tauri/Cargo.toml --bin export-bindings
+          git diff --exit-code -- apps/jobnest/src/lib/api/bindings.ts
 
       - name: Rust tests
         run: cargo test --lib --manifest-path apps/jobnest/src-tauri/Cargo.toml
