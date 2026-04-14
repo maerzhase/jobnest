@@ -30,12 +30,12 @@ const createApplicationSchema = z.object({
   jobPostUrl: z.string().trim().url("Enter a valid job post URL"),
   companyName: z.string().trim().min(1, "Company is required"),
   roleTitle: z.string().trim().min(1, "Role title is required"),
-  salaryExpectation: z.string().optional(),
+  salaryExpectation: z.string(),
   salaryExpectationCurrency: z.string().trim().min(1, "Choose a currency"),
-  salaryOffer: z.string().optional(),
+  salaryOffer: z.string(),
   salaryOfferCurrency: z.string().trim().min(1, "Choose a currency"),
   status: z.enum(["saved", "applied", "interview", "offer", "rejected"]),
-  notes: z.string().optional(),
+  notes: z.string(),
 });
 
 type ApplicationFormDialogProps = {

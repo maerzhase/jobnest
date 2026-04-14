@@ -41,7 +41,7 @@ export function SalaryInput({
           : "border-input focus-within:border-foreground focus-within:ring-ring/25"
       )}
     >
-      <Select value={currency} onValueChange={onCurrencyChange}>
+      <Select value={currency} onValueChange={(value) => { if (value) onCurrencyChange(value); }}>
         <SelectTriggerButton className="h-11 rounded-none rounded-l-md border-0 border-r border-input shadow-none focus-visible:ring-0">
           <SelectValueText placeholder="Currency" />
         </SelectTriggerButton>
