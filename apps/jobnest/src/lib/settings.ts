@@ -26,11 +26,7 @@ export const CURRENCY_OPTIONS = [
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]["value"];
-
-export type AppSettings = {
-  preferredCurrency: string;
-  updatedAt: string;
-};
+export type { AppSettings } from "./api/bindings";
 
 export const THEME_OPTIONS = [
   { value: "system", label: "System" },

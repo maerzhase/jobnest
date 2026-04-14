@@ -1,14 +1,15 @@
 "use client";
 
-import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { Button } from "@jobnest/ui";
+import { appDataApi } from "../../lib/api/app-data";
+import { settingsApi } from "../../lib/api/settings";
 import { getErrorMessage } from "../../lib/error-handler";
-import type { AppSettings, SettingsSection } from "../../lib/settings";
+import type { SettingsSection } from "../../lib/settings";
 import { useSettings } from "../../hooks/use-settings";
 import { AppHeader } from "../app-header";
 import { AppearanceSettings } from "./appearance-settings";
@@ -55,7 +56,7 @@ export function SettingsScreen() {
     clearMessage();
 
     try {
-      await invoke<AppSettings>("reset_app_data");
+      await settingsApi.reset();
 
       startTransition(() => {
         // Reload settings after reset
@@ -77,7 +78,7 @@ export function SettingsScreen() {
     clearError();
 
     try {
-      const exportData = await invoke("export_app_data");
+      const exportData = await appDataApi.export();
       const dataStr = JSON.stringify(exportData, null, 2);
 
       // Open save dialog
@@ -118,7 +119,7 @@ export function SettingsScreen() {
         const fileContent = await file.text();
         const importData = JSON.parse(fileContent);
 
-        await invoke("import_app_data", { input: importData });
+        await appDataApi.import(importData);
 
         startTransition(() => {
           void loadSettings();

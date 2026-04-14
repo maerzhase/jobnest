@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Company {
     pub id: String,
@@ -12,7 +13,7 @@ pub struct Company {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Role {
     pub id: String,
@@ -28,7 +29,7 @@ pub struct Role {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Application {
     pub id: String,
@@ -46,7 +47,7 @@ pub struct Application {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplicationListItem {
     pub id: String,
@@ -63,7 +64,7 @@ pub struct ApplicationListItem {
     pub archived_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Contact {
     pub id: String,
@@ -77,7 +78,7 @@ pub struct Contact {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Note {
     pub id: String,
@@ -88,7 +89,7 @@ pub struct Note {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResult {
     pub entity_type: String,
@@ -99,7 +100,7 @@ pub struct SearchResult {
     pub score: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchFilters {
     pub entity_types: Option<Vec<String>>,
@@ -107,14 +108,14 @@ pub struct SearchFilters {
     pub statuses: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub preferred_currency: String,
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCompanyInput {
     pub name: String,
@@ -123,7 +124,7 @@ pub struct CreateCompanyInput {
     pub industry: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateRoleInput {
     pub company_id: String,
@@ -136,7 +137,7 @@ pub struct CreateRoleInput {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateApplicationInput {
     pub role_id: String,
@@ -149,7 +150,7 @@ pub struct CreateApplicationInput {
     pub priority: Option<i64>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateContactInput {
     pub company_id: String,
@@ -160,7 +161,7 @@ pub struct CreateContactInput {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateNoteInput {
     pub application_id: String,
@@ -168,7 +169,7 @@ pub struct CreateNoteInput {
     pub kind: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateApplicationStatusInput {
     pub application_id: String,
@@ -176,7 +177,7 @@ pub struct UpdateApplicationStatusInput {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTrackedApplicationInput {
     pub application_id: String,
@@ -189,7 +190,7 @@ pub struct UpdateTrackedApplicationInput {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrackedApplicationInput {
     pub job_post_url: String,
@@ -203,13 +204,13 @@ pub struct CreateTrackedApplicationInput {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAppSettingsInput {
     pub preferred_currency: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
     pub id: String,
@@ -222,7 +223,7 @@ pub struct Task {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Attachment {
     pub id: String,
@@ -234,7 +235,7 @@ pub struct Attachment {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct StageEvent {
     pub id: String,
@@ -245,7 +246,7 @@ pub struct StageEvent {
     pub source: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ExportData {
     pub companies: Vec<Company>,
     pub roles: Vec<Role>,
@@ -260,7 +261,7 @@ pub struct ExportData {
     pub exported_at: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct ImportDataInput {
     pub companies: Vec<Company>,
     pub roles: Vec<Role>,

@@ -27,6 +27,12 @@ jobs:
       - name: Code check
         run: pnpm run check
 
+      - name: Check generated JobNest API bindings
+        run: pnpm --filter jobnest api:check
+
+      - name: Run JobNest frontend tests
+        run: pnpm --filter jobnest test
+
       - name: Check jobnest version sync
         run: pnpm run check:jobnest-version
 

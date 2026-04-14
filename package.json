@@ -19,6 +19,7 @@
     "check": "pnpm syncpack:lint && turbo run lint format typecheck",
     "check:jobnest-version": "node scripts/sync-jobnest-version.mjs --check",
     "dev": "turbo run dev",
+    "dev:tauri": "turbo run dev:tauri --filter=jobnest",
     "fix": "pnpm syncpack:fix && turbo run lint:fix format:fix",
     "format": "turbo run format",
     "format:fix": "turbo run format:fix",

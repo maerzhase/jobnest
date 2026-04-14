@@ -1,8 +1,9 @@
 "use client";
 
 import { Button } from "@jobnest/ui";
-import { invoke } from "@tauri-apps/api/core";
 import { startTransition, useCallback, useEffect, useState } from "react";
+import { applicationsApi } from "../../lib/api/applications";
+import { settingsApi, type AppSettings } from "../../lib/api/settings";
 import { getErrorMessage } from "../../lib/error-handler";
 import {
   type ApplicationListItem,
@@ -11,7 +12,6 @@ import {
   mapApplicationToFormValues,
 } from "../../lib/form-mappers";
 import { formatSalaryValue } from "../../lib/salary";
-import type { AppSettings } from "../../lib/settings";
 import { ApplicationDeleteAlert } from "./application-delete-alert";
 import { ApplicationFormDialog } from "./application-form-dialog";
 import { ApplicationsList } from "./applications-list";
@@ -44,7 +44,7 @@ export function ApplicationTracker() {
     setLoadError(null);
 
     try {
-      const items = await invoke<ApplicationListItem[]>("list_applications");
+      const items = await applicationsApi.list();
       setApplications(items);
     } catch (error) {
       setLoadError(getErrorMessage(error));
@@ -57,7 +57,7 @@ export function ApplicationTracker() {
     setIsLoadingSettings(true);
 
     try {
-      const currentSettings = await invoke<AppSettings>("get_app_settings");
+      const currentSettings = await settingsApi.get();
       setSettings(currentSettings);
     } catch (error) {
       setLoadError(getErrorMessage(error));
@@ -116,27 +116,22 @@ export function ApplicationTracker() {
 
       try {
         if (activeApplication) {
-          const updated = await invoke<ApplicationListItem>(
-            "update_tracked_application",
-            {
-              input: {
-                applicationId: activeApplication.id,
-                jobPostUrl: values.jobPostUrl,
-                companyName: values.companyName,
-                roleTitle: values.roleTitle,
-                salaryExpectation: formatSalaryValue(
-                  values.salaryExpectation,
-                  values.salaryExpectationCurrency || preferredCurrency
-                ),
-                salaryOffer: formatSalaryValue(
-                  values.salaryOffer,
-                  values.salaryOfferCurrency || preferredCurrency
-                ),
-                status: values.status,
-                notes: values.notes,
-              },
-            }
-          );
+          const updated = await applicationsApi.update({
+            applicationId: activeApplication.id,
+            jobPostUrl: values.jobPostUrl,
+            companyName: values.companyName,
+            roleTitle: values.roleTitle,
+            salaryExpectation: formatSalaryValue(
+              values.salaryExpectation,
+              values.salaryExpectationCurrency || preferredCurrency
+            ) ?? null,
+            salaryOffer: formatSalaryValue(
+              values.salaryOffer,
+              values.salaryOfferCurrency || preferredCurrency
+            ) ?? null,
+            status: values.status,
+            notes: values.notes || null,
+          });
 
           closeDialog();
           startTransition(() => {
@@ -149,26 +144,23 @@ export function ApplicationTracker() {
           return;
         }
 
-        const created = await invoke<ApplicationListItem>(
-          "create_tracked_application",
-          {
-            input: {
-              jobPostUrl: values.jobPostUrl,
-              companyName: values.companyName,
-              roleTitle: values.roleTitle,
-              salaryExpectation: formatSalaryValue(
-                values.salaryExpectation,
-                values.salaryExpectationCurrency || preferredCurrency
-              ),
-              salaryOffer: formatSalaryValue(
-                values.salaryOffer,
-                values.salaryOfferCurrency || preferredCurrency
-              ),
-              status: values.status,
-              notes: values.notes,
-            },
-          }
-        );
+        const created = await applicationsApi.create({
+          jobPostUrl: values.jobPostUrl,
+          companyName: values.companyName,
+          roleTitle: values.roleTitle,
+          salaryExpectation: formatSalaryValue(
+            values.salaryExpectation,
+            values.salaryExpectationCurrency || preferredCurrency
+          ) ?? null,
+          salaryOffer: formatSalaryValue(
+            values.salaryOffer,
+            values.salaryOfferCurrency || preferredCurrency
+          ) ?? null,
+          status: values.status,
+          appliedAt: null,
+          firstResponseAt: null,
+          notes: values.notes || null,
+        });
 
         closeDialog();
         startTransition(() => {
@@ -192,9 +184,7 @@ export function ApplicationTracker() {
     setIsDeleting(true);
 
     try {
-      await invoke("delete_tracked_application", {
-        applicationId: activeApplication.id,
-      });
+      await applicationsApi.remove(activeApplication.id);
       setIsDeleteAlertOpen(false);
       closeDialog(true);
       startTransition(() => {

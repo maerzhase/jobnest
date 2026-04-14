@@ -66,6 +66,12 @@ Run the desktop app with Tauri:
 pnpm --filter jobnest tauri dev
 ```
 
+Run the desktop app through Turbo:
+
+```bash
+pnpm dev:tauri
+```
+
 The Tauri dev command starts the Next.js app first through `beforeDevCommand` and then opens the native desktop shell.
 
 ## Build

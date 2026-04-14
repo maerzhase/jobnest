@@ -1,8 +1,11 @@
 /**
  * Form data mappers - convert between application models and form values
  */
+import type { ApplicationListItem } from "./api/bindings";
 import { parseSalaryValue } from "./salary";
 import { normalizeStatus, type ApplicationStatus } from "./status";
+
+export type { ApplicationListItem } from "./api/bindings";
 
 export type CreateApplicationValues = {
   jobPostUrl: string;
@@ -14,21 +17,6 @@ export type CreateApplicationValues = {
   salaryOfferCurrency: string;
   status: ApplicationStatus;
   notes: string;
-};
-
-export type ApplicationListItem = {
-  id: string;
-  companyName: string;
-  roleTitle: string;
-  jobPostUrl: string | null;
-  salaryExpectation: string | null;
-  salaryOffer: string | null;
-  status: string;
-  appliedAt: string | null;
-  firstResponseAt: string | null;
-  notes: string | null;
-  updatedAt: string;
-  archivedAt: string | null;
 };
 
 export const formDefaults: CreateApplicationValues = {

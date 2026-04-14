@@ -13,6 +13,7 @@ use crate::{
 };
 
 #[tauri::command]
+#[specta::specta]
 pub async fn create_company(
     input: CreateCompanyInput,
     state: State<'_, AppState>,
@@ -25,6 +26,7 @@ pub async fn create_company(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn create_role(
     input: CreateRoleInput,
     state: State<'_, AppState>,
@@ -37,6 +39,7 @@ pub async fn create_role(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn create_application(
     input: CreateApplicationInput,
     state: State<'_, AppState>,
@@ -49,18 +52,20 @@ pub async fn create_application(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn create_tracked_application(
     input: CreateTrackedApplicationInput,
     state: State<'_, AppState>,
 ) -> Result<ApplicationListItem, String> {
     state
-        .db
-        .create_tracked_application(input)
+        .applications
+        .create_tracked(input)
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_application_status(
     input: UpdateApplicationStatusInput,
     state: State<'_, AppState>,
@@ -73,30 +78,33 @@ pub async fn update_application_status(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_tracked_application(
     input: UpdateTrackedApplicationInput,
     state: State<'_, AppState>,
 ) -> Result<ApplicationListItem, String> {
     state
-        .db
-        .update_tracked_application(input)
+        .applications
+        .update_tracked(input)
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn delete_tracked_application(
     application_id: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     state
-        .db
-        .delete_tracked_application(&application_id)
+        .applications
+        .delete_tracked(&application_id)
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn create_contact(
     input: CreateContactInput,
     state: State<'_, AppState>,
@@ -109,6 +117,7 @@ pub async fn create_contact(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn create_note(
     input: CreateNoteInput,
     state: State<'_, AppState>,
@@ -121,6 +130,7 @@ pub async fn create_note(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn search(
     query: String,
     filters: Option<SearchFilters>,
@@ -136,6 +146,7 @@ pub async fn search(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn reindex_search(state: State<'_, AppState>) -> Result<(), String> {
     state
         .db
@@ -145,65 +156,71 @@ pub async fn reindex_search(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn list_applications(
     state: State<'_, AppState>,
 ) -> Result<Vec<ApplicationListItem>, String> {
     state
-        .db
-        .list_applications()
+        .applications
+        .list()
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_app_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
     state
-        .db
-        .get_app_settings()
+        .settings
+        .get()
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_app_settings(
     input: UpdateAppSettingsInput,
     state: State<'_, AppState>,
 ) -> Result<AppSettings, String> {
     state
-        .db
-        .update_app_settings(input)
+        .settings
+        .update(input)
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn reset_app_data(state: State<'_, AppState>) -> Result<AppSettings, String> {
     state
-        .db
-        .reset_app_data()
+        .settings
+        .reset()
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn export_app_data(
     state: State<'_, AppState>,
 ) -> Result<crate::models::ExportData, String> {
     state
-        .db
-        .export_app_data()
+        .settings
+        .export()
         .await
         .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn import_app_data(
     input: crate::models::ImportDataInput,
     state: State<'_, AppState>,
 ) -> Result<crate::models::ExportData, String> {
     state
-        .db
-        .import_app_data(input)
+        .settings
+        .import(input)
         .await
         .map_err(|err| err.to_string())
 }

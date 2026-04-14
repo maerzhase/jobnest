@@ -26,15 +26,24 @@
     "@vitejs/plugin-react": "^4.6.0",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.2",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^3.2.4"
   },
   "private": true,
   "scripts": {
+    "api:check": "pnpm api:generate && git diff --exit-code -- src/lib/api/bindings.ts",
+    "api:generate": "cargo run --manifest-path src-tauri/Cargo.toml --bin export-bindings",
     "build": "next build",
     "dev": "next dev",
+    "dev:tauri": "tauri dev",
     "lint": "biome lint .",
+    "prebuild": "pnpm api:generate",
+    "predev": "pnpm api:generate",
+    "pretypecheck": "pnpm api:generate",
     "start": "next start",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "type": "module"
 }

@@ -1,9 +1,7 @@
 "use client";
 
-import { invoke } from "@tauri-apps/api/core";
 import { startTransition, useCallback, useEffect, useState } from "react";
-import { getErrorMessage } from "../lib/error-handler";
-import type { AppSettings } from "../lib/settings";
+import { settingsApi, type AppSettings } from "../lib/api/settings";
 
 type UseSettingsReturn = {
   settings: AppSettings | null;
@@ -29,10 +27,10 @@ export function useSettings(): UseSettingsReturn {
     setError(null);
 
     try {
-      const currentSettings = await invoke<AppSettings>("get_app_settings");
+      const currentSettings = await settingsApi.get();
       setSettings(currentSettings);
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(err instanceof Error ? err.message : "Failed to load settings.");
     } finally {
       setIsLoading(false);
     }
@@ -53,21 +51,18 @@ export function useSettings(): UseSettingsReturn {
       setMessage(null);
 
       try {
-        const updatedSettings = await invoke<AppSettings>(
-          "update_app_settings",
-          {
-            input: {
-              preferredCurrency: nextCurrency,
-            },
-          }
-        );
+        const updatedSettings = await settingsApi.update({
+          preferredCurrency: nextCurrency,
+        });
 
         startTransition(() => {
           setSettings(updatedSettings);
         });
         setMessage("Preferred currency updated.");
       } catch (err) {
-        setError(getErrorMessage(err));
+        setError(
+          err instanceof Error ? err.message : "Failed to update settings."
+        );
       } finally {
         setIsSavingCurrency(false);
       }

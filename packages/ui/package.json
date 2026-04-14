@@ -33,11 +33,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles.css": "./dist/styles.css",
-    "./theme.css": "./src/styles/theme.css"
+    "./styles.css": "./styles.css",
+    "./theme.css": "./theme.css"
   },
   "files": [
     "dist",
+    "styles.css",
+    "theme.css",
     "src/styles"
   ],
   "license": "MIT",

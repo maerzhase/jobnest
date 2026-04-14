@@ -1,14 +1,22 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
+    "api:generate": {
+      "cache": true,
+      "outputs": ["src/lib/api/bindings.ts"]
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "api:generate"],
       "outputs": ["dist/**", ".next/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true,
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "api:generate"]
+    },
+    "dev:tauri": {
+      "cache": false,
+      "persistent": true
     },
     "lint": {
       "cache": true,
@@ -26,7 +34,7 @@
     },
     "typecheck": {
       "cache": true,
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "api:generate"],
       "outputs": []
     }
   }
