@@ -2,8 +2,8 @@
   "name": "jobnest",
   "version": "0.0.0",
   "dependencies": {
-    "@jobnest/ui": "workspace:*",
     "@hookform/resolvers": "^5.2.2",
+    "@jobnest/ui": "workspace:*",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-fs": "^2",
