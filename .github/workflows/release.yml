@@ -93,8 +93,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   release-jobnest:
-    needs: release
-    if: github.event_name == 'workflow_dispatch' || needs.release.outputs.should_release_jobnest == 'true'
+    if: |
+      always() &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        needs.release.outputs.should_release_jobnest == 'true'
+      )
+    needs:
+      - release
     permissions:
       contents: write
     env:
