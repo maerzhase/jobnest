@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectTriggerButton,
   SelectValueText,
-} from "@acme/ui";
+} from "@jobnest/ui";
 import { CURRENCY_OPTIONS } from "../../lib/settings";
 
 type SalaryInputProps = {

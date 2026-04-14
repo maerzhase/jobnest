@@ -6,7 +6,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { startTransition, useCallback, useEffect, useState } from "react";
-import { Button } from "@acme/ui";
+import { Button } from "@jobnest/ui";
 import { getErrorMessage } from "../../lib/error-handler";
 import type { AppSettings, SettingsSection } from "../../lib/settings";
 import { useSettings } from "../../hooks/use-settings";

@@ -7,7 +7,7 @@ import {
   SelectItem,
   SelectTriggerButton,
   SelectValueText,
-} from "@acme/ui";
+} from "@jobnest/ui";
 import { THEME_OPTIONS } from "../../lib/settings";
 import { SettingsSection, SettingBlock } from "./settings-section";
 

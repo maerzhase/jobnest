@@ -1,6 +1,6 @@
 ---
 "jobnest": patch
-"@acme/ui": patch
+"@jobnest/ui": patch
 ---
 
 Add a shared Base UI `Select` component to the UI package and use it in the JobNest application form.

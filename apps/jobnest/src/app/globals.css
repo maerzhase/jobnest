@@ -1,6 +1,6 @@
 @import "./variants.css";
 @import "tailwindcss";
-@import "@acme/ui/theme.css";
+@import "@jobnest/ui/theme.css";
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 
 @theme {

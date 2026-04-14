@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@acme/ui";
+import { Button } from "@jobnest/ui";
 import { invoke } from "@tauri-apps/api/core";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { getErrorMessage } from "../../lib/error-handler";

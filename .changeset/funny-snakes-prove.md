@@ -1,6 +1,6 @@
 ---
 "jobnest": patch
-"@acme/ui": patch
+"@jobnest/ui": patch
 ---
 
 Add a minimal local-first application tracking flow backed by the Tauri SQLite store.

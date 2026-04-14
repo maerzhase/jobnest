@@ -11,7 +11,7 @@ import {
   DialogTitleText,
   Field,
   Input,
-} from "@acme/ui";
+} from "@jobnest/ui";
 
 const RESET_CONFIRMATION_TEXT = "clear my data";
 

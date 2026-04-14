@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitleText,
   Button,
-} from "@acme/ui";
+} from "@jobnest/ui";
 
 type ApplicationDeleteAlertProps = {
   isOpen: boolean;

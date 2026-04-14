@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@acme/ui";
+import { Button } from "@jobnest/ui";
 import { useRef } from "react";
 import { SettingsSection, SettingBlock } from "./settings-section";
 
