@@ -58,10 +58,10 @@ function ApplicationCardComponent({
     <li
       ref={setNodeRef}
       style={style}
-      className={`group rounded-lg border border-border bg-background/70 hover:border-foreground/30 hover:shadow-md cursor-grab active:cursor-grabbing ${
+      className={`group cursor-grab rounded-xl border border-border/70 bg-card shadow-[0_1px_0_rgba(255,255,255,0.5)_inset] transition-[border-color,box-shadow,transform,background-color] active:cursor-grabbing hover:border-foreground/15 hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
         isSortableDragging || isDragging
           ? "opacity-50 scale-95"
-          : "transition-all"
+          : ""
       }`}
       {...attributes}
       {...listeners}

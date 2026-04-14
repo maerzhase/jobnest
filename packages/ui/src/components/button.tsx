@@ -20,8 +20,10 @@ const buttonVariants = cva(
         primary:
           "border-foreground bg-foreground text-background hover:opacity-90",
         secondary: "border-input bg-background text-foreground hover:bg-muted",
+        ghost: "border-transparent bg-transparent text-foreground hover:bg-muted",
       },
       size: {
+        xs: "h-8 px-2.5 text-xs has-[>svg]:px-2",
         default: "h-10 has-[>svg]:px-3",
         sm: "h-9 px-3 text-xs has-[>svg]:px-2.5",
         lg: "h-11 px-6 has-[>svg]:px-5",

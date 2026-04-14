@@ -12,39 +12,40 @@
 
 @layer base {
   body {
-    --background: #ffffff;
+    --background: #efede7;
     --foreground: #000000;
-    --card: rgb(255 255 255 / 90%);
+    --card: #f8f6f1;
     --card-foreground: #000000;
     --muted: rgb(0 0 0 / 0.04);
     --muted-foreground: rgb(0 0 0 / 0.62);
-    --border: rgb(0 0 0 / 0.12);
-    --input: rgb(0 0 0 / 0.12);
+    --border: rgb(0 0 0 / 0.08);
+    --input: rgb(0 0 0 / 0.1);
     --ring: rgb(0 0 0 / 0.45);
     --page-background:
-      radial-gradient(circle at top, rgb(0 0 0 / 0.035), transparent 42%),
-      linear-gradient(180deg, #f7f7f7 0%, #ffffff 100%);
+      radial-gradient(circle at top, rgb(255 255 255 / 0.62), transparent 36%),
+      radial-gradient(circle at 85% 15%, rgb(0 0 0 / 0.03), transparent 32%),
+      linear-gradient(180deg, #e2ddd3 0%, #efede7 42%, #e7e3da 100%);
     color-scheme: light;
   }
 
   @variant dark {
     body {
-      --background: #000000;
+      --background: #110f0d;
       --foreground: #ffffff;
-      --card: rgb(0 0 0 / 0.6);
+      --card: #191715;
       --card-foreground: #ffffff;
-      --muted: rgb(255 255 255 / 0.08);
+      --muted: rgb(255 255 255 / 0.06);
       --muted-foreground: rgb(255 255 255 / 0.68);
-      --border: rgb(255 255 255 / 0.14);
-      --input: rgb(255 255 255 / 0.14);
+      --border: rgb(255 255 255 / 0.1);
+      --input: rgb(255 255 255 / 0.12);
       --ring: rgb(255 255 255 / 0.55);
       --page-background:
-        radial-gradient(circle at top, rgb(255 255 255 / 0.08), transparent 34%),
+        radial-gradient(circle at top, rgb(255 255 255 / 0.06), transparent 34%),
         radial-gradient(
           circle at bottom right,
-          rgb(255 255 255 / 0.04),
+          rgb(255 255 255 / 0.03),
           transparent 26%
-        ), linear-gradient(180deg, #050505 0%, #000000 100%);
+        ), linear-gradient(180deg, #0d0c0b 0%, #110f0d 45%, #0b0a09 100%);
       color-scheme: dark;
     }
   }
