@@ -58,6 +58,11 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/jobnest/src-tauri
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
