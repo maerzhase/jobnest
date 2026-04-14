@@ -20,6 +20,8 @@ export { DialogFooter } from "./components/dialog";
 export { DialogHeader } from "./components/dialog";
 export { DialogTitleText } from "./components/dialog";
 export { DialogTriggerButton } from "./components/dialog";
+export { ToastProvider, createToastManager } from "./components/toast";
+export type { ToastManager } from "./components/toast";
 export type { FieldProps } from "./components/field";
 export { Field } from "./components/field";
 export type { InputProps } from "./components/input";

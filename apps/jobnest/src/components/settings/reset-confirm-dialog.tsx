@@ -22,7 +22,6 @@ type ResetConfirmDialogProps = {
   onConfirmationInputChange: (input: string) => void;
   onConfirm: () => Promise<void>;
   isResetting: boolean;
-  error?: string | null;
 };
 
 export function ResetConfirmDialog({
@@ -32,7 +31,6 @@ export function ResetConfirmDialog({
   onConfirmationInputChange,
   onConfirm,
   isResetting,
-  error,
 }: ResetConfirmDialogProps) {
   return (
     <Dialog
@@ -67,7 +65,6 @@ export function ResetConfirmDialog({
         <div className="grid gap-5">
           <Field
             description="This must match the confirmation phrase exactly."
-            error={error}
             label="Confirmation text"
             name="resetConfirmation"
           >

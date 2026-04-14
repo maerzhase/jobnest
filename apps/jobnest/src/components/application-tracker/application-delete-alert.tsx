@@ -16,7 +16,6 @@ type ApplicationDeleteAlertProps = {
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   isDeleting: boolean;
-  error?: string | null;
 };
 
 export function ApplicationDeleteAlert({
@@ -24,7 +23,6 @@ export function ApplicationDeleteAlert({
   onOpenChange,
   onConfirm,
   isDeleting,
-  error,
 }: ApplicationDeleteAlertProps) {
   return (
     <AlertDialog onOpenChange={onOpenChange} open={isOpen}>
@@ -35,12 +33,6 @@ export function ApplicationDeleteAlert({
             Are you sure you want to delete this application? This action cannot be undone.
           </AlertDialogDescriptionText>
         </AlertDialogHeader>
-
-        {error ? (
-          <p className="rounded-md border border-red-500/30 bg-red-500/8 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-            {error}
-          </p>
-        ) : null}
 
         <AlertDialogFooter>
           <AlertDialogCancelButton disabled={isDeleting} type="button">
