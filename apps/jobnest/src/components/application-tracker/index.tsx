@@ -1,0 +1,381 @@
+"use client";
+
+import {
+  IconLayoutKanban,
+  IconListDetails,
+  IconPlus,
+} from "@tabler/icons-react";
+import { Button, ToggleGroup, ToggleGroupItem } from "@jobnest/ui";
+import { startTransition, useCallback, useEffect, useState } from "react";
+import {
+  applicationsApi,
+  type ApplicationStatusGroup,
+} from "../../lib/api/applications";
+import { settingsApi, type AppSettings } from "../../lib/api/settings";
+import { getErrorMessage } from "../../lib/error-handler";
+import {
+  type ApplicationListItem,
+  type CreateApplicationValues,
+  getFormDefaults,
+  mapApplicationToFormValues,
+} from "../../lib/form-mappers";
+import { formatSalaryValue, parseSalaryValue } from "../../lib/salary";
+import type { ApplicationStatus } from "../../lib/status";
+import { ApplicationDeleteAlert } from "./application-delete-alert";
+import { ApplicationFormDialog } from "./application-form-dialog";
+import { ApplicationsList } from "./applications-list";
+
+type ApplicationDialogState =
+  | { mode: "create" }
+  | { mode: "edit"; application: ApplicationListItem };
+
+type ApplicationViewMode = "list" | "kanban";
+
+export function ApplicationTracker() {
+  const [applicationGroups, setApplicationGroups] = useState<
+    ApplicationStatusGroup[]
+  >([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [viewMode, setViewMode] = useState<ApplicationViewMode>("kanban");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [movingApplicationId, setMovingApplicationId] = useState<string | null>(
+    null
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [dialogState, setDialogState] = useState<ApplicationDialogState | null>(
+    null
+  );
+
+  const activeApplication =
+    dialogState?.mode === "edit" ? dialogState.application : null;
+  const isDialogOpen = dialogState !== null;
+  const preferredCurrency = settings?.preferredCurrency ?? "EUR";
+  const totalApplications = applicationGroups.reduce(
+    (count, group) => count + group.applications.length,
+    0
+  );
+
+  const loadApplications = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    setMoveError(null);
+
+    try {
+      const groups = await applicationsApi.list();
+      setApplicationGroups(groups);
+    } catch (error) {
+      setLoadError(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadSettings = useCallback(async () => {
+    setIsLoadingSettings(true);
+
+    try {
+      const currentSettings = await settingsApi.get();
+      setSettings(currentSettings);
+    } catch (error) {
+      setLoadError(getErrorMessage(error));
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadApplications();
+    void loadSettings();
+  }, [loadApplications, loadSettings]);
+
+  useEffect(() => {
+    if (isDialogOpen) {
+      void loadSettings();
+    }
+  }, [isDialogOpen, loadSettings]);
+
+  const closeDialog = useCallback(
+    (force = false) => {
+      if (!force && (isSubmitting || isDeleting)) {
+        return;
+      }
+
+      setSubmitError(null);
+      setIsDeleteAlertOpen(false);
+      setDialogState(null);
+    },
+    [isDeleting, isSubmitting]
+  );
+
+  const openCreateDialog = useCallback(() => {
+    setSubmitError(null);
+    setMoveError(null);
+    setIsDeleteAlertOpen(false);
+    setDialogState({ mode: "create" });
+  }, []);
+
+  const openEditDialog = useCallback((application: ApplicationListItem) => {
+    setSubmitError(null);
+    setMoveError(null);
+    setIsDeleteAlertOpen(false);
+    setDialogState({ mode: "edit", application });
+  }, []);
+
+  const getFormInitialValues = useCallback((): CreateApplicationValues => {
+    if (activeApplication) {
+      return mapApplicationToFormValues(activeApplication, preferredCurrency);
+    }
+    return getFormDefaults(preferredCurrency);
+  }, [activeApplication, preferredCurrency]);
+
+  const refreshApplications = useCallback(() => {
+    startTransition(() => {
+      void loadApplications();
+    });
+  }, [loadApplications]);
+
+  const onSubmit = useCallback(
+    async (values: CreateApplicationValues) => {
+      setSubmitError(null);
+      setIsSubmitting(true);
+
+      try {
+        if (activeApplication) {
+          await applicationsApi.update({
+            applicationId: activeApplication.id,
+            jobPostUrl: values.jobPostUrl,
+            companyName: values.companyName,
+            roleTitle: values.roleTitle,
+            salaryExpectation: formatSalaryValue(
+              values.salaryExpectation,
+              values.salaryExpectationCurrency || preferredCurrency
+            ) ?? null,
+            salaryOffer: formatSalaryValue(
+              values.salaryOffer,
+              values.salaryOfferCurrency || preferredCurrency
+            ) ?? null,
+            status: values.status,
+            notes: values.notes || null,
+          });
+
+          closeDialog();
+          refreshApplications();
+          return;
+        }
+
+        await applicationsApi.create({
+          jobPostUrl: values.jobPostUrl,
+          companyName: values.companyName,
+          roleTitle: values.roleTitle,
+          salaryExpectation: formatSalaryValue(
+            values.salaryExpectation,
+            values.salaryExpectationCurrency || preferredCurrency
+          ) ?? null,
+          salaryOffer: formatSalaryValue(
+            values.salaryOffer,
+            values.salaryOfferCurrency || preferredCurrency
+          ) ?? null,
+          status: values.status,
+          appliedAt: null,
+          firstResponseAt: null,
+          notes: values.notes || null,
+        });
+
+        closeDialog();
+        refreshApplications();
+      } catch (error) {
+        setSubmitError(getErrorMessage(error));
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [activeApplication, closeDialog, preferredCurrency, refreshApplications]
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!activeApplication) {
+      return;
+    }
+
+    setSubmitError(null);
+    setIsDeleting(true);
+
+    try {
+      await applicationsApi.remove(activeApplication.id);
+      setIsDeleteAlertOpen(false);
+      closeDialog(true);
+      refreshApplications();
+    } catch (error) {
+      setSubmitError(getErrorMessage(error));
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [activeApplication, closeDialog, refreshApplications]);
+
+  const handleMoveToStatus = useCallback(
+    async (application: ApplicationListItem, status: ApplicationStatus) => {
+      if (application.status === status) {
+        return;
+      }
+
+      setMoveError(null);
+      setMovingApplicationId(application.id);
+
+      const previousGroups = applicationGroups;
+
+      setApplicationGroups((currentGroups) => {
+        const nextGroups = currentGroups
+          .map((group) => {
+            const applications = group.applications.filter(
+              (item) => item.id !== application.id
+            );
+
+            if (group.status === status) {
+              return {
+                ...group,
+                applications: [{ ...application, status }, ...applications],
+              };
+            }
+
+            return {
+              ...group,
+              applications,
+            };
+          })
+          .filter((group) => group.applications.length > 0);
+
+        if (nextGroups.some((group) => group.status === status)) {
+          return nextGroups;
+        }
+
+        return [
+          ...nextGroups,
+          {
+            status,
+            applications: [{ ...application, status }],
+          },
+        ];
+      });
+
+      try {
+        const expectation = parseSalaryValue(
+          application.salaryExpectation,
+          preferredCurrency
+        );
+        const offer = parseSalaryValue(application.salaryOffer, preferredCurrency);
+
+        await applicationsApi.update({
+          applicationId: application.id,
+          status,
+          jobPostUrl: application.jobPostUrl ?? "",
+          companyName: application.companyName,
+          roleTitle: application.roleTitle,
+          salaryExpectation: formatSalaryValue(
+            expectation.amount,
+            expectation.currency
+          ) ?? null,
+          salaryOffer:
+            formatSalaryValue(offer.amount, offer.currency) ?? null,
+          notes: application.notes ?? null,
+        });
+        refreshApplications();
+      } catch (error) {
+        setApplicationGroups(previousGroups);
+        setMoveError(getErrorMessage(error));
+      } finally {
+        setMovingApplicationId(null);
+      }
+    },
+    [applicationGroups, preferredCurrency, refreshApplications]
+  );
+
+  return (
+    <>
+      <section className="w-full">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Applications ({totalApplications})
+            </h2>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button onClick={openCreateDialog} type="button">
+              <IconPlus aria-hidden="true" className="size-4" />
+              Add application
+            </Button>
+            <ToggleGroup
+              aria-label="Application view"
+              onValueChange={(nextView) => {
+                if (nextView) {
+                  setViewMode(nextView);
+                }
+              }}
+              value={viewMode}
+            >
+              <ToggleGroupItem
+                aria-label="Show applications as a kanban board"
+                title="Kanban view"
+                value="kanban"
+              >
+                <IconLayoutKanban aria-hidden="true" className="size-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                aria-label="Show applications as a list"
+                title="List view"
+                value="list"
+              >
+                <IconListDetails aria-hidden="true" className="size-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </div>
+
+        {loadError || moveError ? (
+          <p className="rounded-md border border-red-500/30 bg-red-500/8 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+            {loadError ?? moveError}
+          </p>
+        ) : null}
+
+        <ApplicationsList
+          groups={applicationGroups}
+          isLoading={isLoading}
+          onEdit={openEditDialog}
+          onMoveToStatus={handleMoveToStatus}
+          movingApplicationId={movingApplicationId}
+          viewMode={viewMode}
+        />
+      </section>
+
+      <ApplicationDeleteAlert
+        isOpen={isDeleteAlertOpen}
+        onOpenChange={setIsDeleteAlertOpen}
+        onConfirm={handleDelete}
+        isDeleting={isDeleting}
+        error={submitError}
+      />
+
+      <ApplicationFormDialog
+        isOpen={isDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDialog();
+          }
+        }}
+        initialValues={getFormInitialValues()}
+        onSubmit={onSubmit}
+        onDelete={() => setIsDeleteAlertOpen(true)}
+        isSubmitting={isSubmitting}
+        isDeleting={isDeleting}
+        isLoadingSettings={isLoadingSettings}
+        error={submitError}
+        isEditing={activeApplication !== null}
+      />
+    </>
+  );
+}

@@ -1,7 +1,7 @@
 {
-  "name": "@acme/ui",
+  "name": "@jobnest/ui",
   "description": "Opinionated Base UI + Tailwind component package for the monorepo template.",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "dependencies": {
     "@base-ui/react": "1.3.0",
     "class-variance-authority": "0.7.1",
@@ -17,13 +17,13 @@
     "@storybook/react-vite": "10.1.2",
     "@tailwindcss/cli": "4.2.1",
     "@tailwindcss/postcss": "4.2.1",
-    "tailwindcss": "4.2.1",
     "@types/node": "22.14.1",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "storybook": "10.1.2",
+    "tailwindcss": "4.2.1",
     "tsdown": "0.20.3",
     "typescript": "5.9.2",
     "vite-tsconfig-paths": "5.1.4"
@@ -33,11 +33,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles.css": "./dist/styles.css",
-    "./theme.css": "./src/styles/theme.css"
+    "./styles.css": "./styles.css",
+    "./theme.css": "./theme.css"
   },
   "files": [
     "dist",
+    "styles.css",
+    "theme.css",
     "src/styles"
   ],
   "license": "MIT",

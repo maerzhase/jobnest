@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@acme/ui";
+import { Button } from "@jobnest/ui";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 

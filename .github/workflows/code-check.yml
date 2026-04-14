@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  check:
+  code-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,8 +24,63 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Code check
-        run: pnpm run check
+      - name: Syncpack check
+        run: pnpm run syncpack:lint
+
+      - name: Lint and format checks
+        run: pnpm exec turbo run lint format
+
+      - name: Shared package typecheck
+        run: pnpm exec turbo run typecheck --filter=@jobnest/ui
+
+      - name: Run JobNest frontend tests
+        run: pnpm --filter jobnest test
+
+      - name: Check jobnest version sync
+        run: pnpm run check:jobnest-version
+
+  jobnest-rust-checks:
+    runs-on: ubuntu-latest
+    needs: code-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/jobnest/src-tauri
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libglib2.0-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: JobNest typecheck
+        run: pnpm exec turbo run typecheck --filter=jobnest
+
+      - name: Check generated JobNest API bindings
+        run: |
+          cargo run --manifest-path apps/jobnest/src-tauri/Cargo.toml --bin export-bindings
+          git diff --exit-code -- apps/jobnest/src/lib/api/bindings.ts
+
+      - name: Rust tests
+        run: cargo test --lib --manifest-path apps/jobnest/src-tauri/Cargo.toml
 
       - name: Build
         run: pnpm run build
