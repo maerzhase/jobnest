@@ -8,6 +8,7 @@ import {
   formatStatusLabel,
   type ApplicationStatus,
 } from "../../lib/status";
+import { ApplicationStatusBadge } from "./application-status-badge";
 import { ApplicationCard } from "./application-card";
 import { trackerPanelClass } from "./styles";
 
@@ -41,8 +42,8 @@ function KanbanColumnComponent({
       }`}
     >
       <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <h3 className="text-sm font-semibold">
-          {formatStatusLabel(status)}
+        <h3>
+          <ApplicationStatusBadge status={status} />
         </h3>
         <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
           {applications.length}
@@ -62,6 +63,8 @@ function KanbanColumnComponent({
                   application={application}
                   isDragging={movingApplicationId === application.id}
                   onEdit={onEdit}
+                  showDragHandle
+                  showStatus={false}
                 />
               ))}
             </ul>
