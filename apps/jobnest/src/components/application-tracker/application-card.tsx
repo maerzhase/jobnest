@@ -1,5 +1,8 @@
 "use client";
 
+import { memo } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { formatDate } from "../../lib/date";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import { ApplicationStatusBadge } from "./application-status-badge";
@@ -7,6 +10,7 @@ import { ApplicationStatusBadge } from "./application-status-badge";
 type ApplicationCardProps = {
   application: ApplicationListItem;
   onEdit: (application: ApplicationListItem) => void;
+  isDragging?: boolean;
 };
 
 function getTimelineLabel(application: ApplicationListItem): string {
@@ -25,12 +29,43 @@ function getTimelineLabel(application: ApplicationListItem): string {
   return `Saved ${formatDate(application.updatedAt)}`;
 }
 
-export function ApplicationCard({
+function ApplicationCardComponent({
   application,
   onEdit,
+  isDragging = false,
 }: ApplicationCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
+    id: application.id,
+    data: {
+      type: "card",
+      application,
+    },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
-    <li className="group rounded-lg border border-border bg-background/70 transition-all hover:border-foreground/30 hover:shadow-md">
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`group rounded-lg border border-border bg-background/70 hover:border-foreground/30 hover:shadow-md cursor-grab active:cursor-grabbing ${
+        isSortableDragging || isDragging
+          ? "opacity-50 scale-95"
+          : "transition-all"
+      }`}
+      {...attributes}
+      {...listeners}
+    >
       <button
         className="w-full px-4 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         onClick={() => onEdit(application)}
@@ -85,3 +120,5 @@ export function ApplicationCard({
     </li>
   );
 }
+
+export const ApplicationCard = memo(ApplicationCardComponent);

@@ -11,5 +11,6 @@
   body {
     min-height: 100vh;
     background: var(--page-background);
+    background-attachment: fixed;
   }
 }

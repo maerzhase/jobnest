@@ -25,6 +25,11 @@ export { Field } from "./components/field";
 export type { InputProps } from "./components/input";
 export { Input } from "./components/input";
 export type {
+  ToggleGroupItemProps,
+  ToggleGroupProps,
+} from "./components/toggle-group";
+export { ToggleGroup, ToggleGroupItem } from "./components/toggle-group";
+export type {
   SelectContentProps,
   SelectItemProps,
   SelectProps,

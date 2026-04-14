@@ -3,6 +3,7 @@ import {
   type ApplicationListItem,
   type ApplicationStatusGroup,
   type CreateTrackedApplicationInput,
+  type UpdateApplicationStatusInput,
   type UpdateTrackedApplicationInput,
 } from "./bindings";
 import { executeLocalApiCall } from "./client";
@@ -11,6 +12,7 @@ export type {
   ApplicationListItem,
   ApplicationStatusGroup,
   CreateTrackedApplicationInput,
+  UpdateApplicationStatusInput,
   UpdateTrackedApplicationInput,
 };
 
@@ -29,6 +31,12 @@ export const applicationsApi = {
     input: UpdateTrackedApplicationInput
   ): Promise<ApplicationListItem> {
     return executeLocalApiCall(() => commands.updateTrackedApplication(input));
+  },
+
+  updateStatus(input: UpdateApplicationStatusInput): Promise<void> {
+    return executeLocalApiCall(async () => {
+      await commands.updateApplicationStatus(input);
+    });
   },
 
   remove(applicationId: string): Promise<void> {

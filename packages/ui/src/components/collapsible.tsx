@@ -4,7 +4,9 @@ import { Collapsible as BaseCollapsible } from "@base-ui/react/collapsible";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
-type CollapsibleRootProps = ComponentPropsWithoutRef<typeof BaseCollapsible.Root>;
+type CollapsibleRootProps = ComponentPropsWithoutRef<
+  typeof BaseCollapsible.Root
+>;
 type CollapsibleTriggerProps = ComponentPropsWithoutRef<
   typeof BaseCollapsible.Trigger
 >;
