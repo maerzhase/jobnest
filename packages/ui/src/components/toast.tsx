@@ -4,7 +4,9 @@ import { Toast as BaseToast } from "@base-ui/react/toast";
 import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
-type ToastProviderRootProps = ComponentPropsWithoutRef<typeof BaseToast.Provider>;
+type ToastProviderRootProps = ComponentPropsWithoutRef<
+  typeof BaseToast.Provider
+>;
 
 function ToastViewportRenderer(): JSX.Element {
   const { toasts } = BaseToast.useToastManager();
