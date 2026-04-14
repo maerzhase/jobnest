@@ -47,7 +47,6 @@ type ApplicationFormDialogProps = {
   isSubmitting: boolean;
   isDeleting: boolean;
   isLoadingSettings: boolean;
-  error?: string | null;
   isEditing: boolean;
 };
 
@@ -60,7 +59,6 @@ export function ApplicationFormDialog({
   isSubmitting,
   isDeleting,
   isLoadingSettings,
-  error,
   isEditing,
 }: ApplicationFormDialogProps) {
   const {
@@ -270,13 +268,6 @@ export function ApplicationFormDialog({
               {...register("notes")}
             />
           </Field>
-
-          {error ? (
-            <p className="rounded-md border border-red-500/30 bg-red-500/8 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-              {error}
-            </p>
-          ) : null}
-
           <DialogFooter>
             {isEditing ? (
               <Button

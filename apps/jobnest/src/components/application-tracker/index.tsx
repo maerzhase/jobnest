@@ -21,6 +21,7 @@ import {
 } from "../../lib/form-mappers";
 import { formatSalaryValue, parseSalaryValue } from "../../lib/salary";
 import type { ApplicationStatus } from "../../lib/status";
+import { showErrorToast, showSuccessToast } from "../../lib/toast";
 import { ApplicationDeleteAlert } from "./application-delete-alert";
 import { ApplicationFormDialog } from "./application-form-dialog";
 import { ApplicationsList } from "./applications-list";
@@ -39,9 +40,6 @@ export function ApplicationTracker() {
   const [viewMode, setViewMode] = useState<ApplicationViewMode>("kanban");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [moveError, setMoveError] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [movingApplicationId, setMovingApplicationId] = useState<string | null>(
     null
@@ -63,14 +61,15 @@ export function ApplicationTracker() {
 
   const loadApplications = useCallback(async () => {
     setIsLoading(true);
-    setLoadError(null);
-    setMoveError(null);
 
     try {
       const groups = await applicationsApi.list();
       setApplicationGroups(groups);
     } catch (error) {
-      setLoadError(getErrorMessage(error));
+      showErrorToast({
+        title: "Could not load applications",
+        description: getErrorMessage(error),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +82,10 @@ export function ApplicationTracker() {
       const currentSettings = await settingsApi.get();
       setSettings(currentSettings);
     } catch (error) {
-      setLoadError(getErrorMessage(error));
+      showErrorToast({
+        title: "Could not load tracker settings",
+        description: getErrorMessage(error),
+      });
     } finally {
       setIsLoadingSettings(false);
     }
@@ -106,7 +108,6 @@ export function ApplicationTracker() {
         return;
       }
 
-      setSubmitError(null);
       setIsDeleteAlertOpen(false);
       setDialogState(null);
     },
@@ -114,15 +115,11 @@ export function ApplicationTracker() {
   );
 
   const openCreateDialog = useCallback(() => {
-    setSubmitError(null);
-    setMoveError(null);
     setIsDeleteAlertOpen(false);
     setDialogState({ mode: "create" });
   }, []);
 
   const openEditDialog = useCallback((application: ApplicationListItem) => {
-    setSubmitError(null);
-    setMoveError(null);
     setIsDeleteAlertOpen(false);
     setDialogState({ mode: "edit", application });
   }, []);
@@ -142,7 +139,6 @@ export function ApplicationTracker() {
 
   const onSubmit = useCallback(
     async (values: CreateApplicationValues) => {
-      setSubmitError(null);
       setIsSubmitting(true);
 
       try {
@@ -166,6 +162,10 @@ export function ApplicationTracker() {
 
           closeDialog();
           refreshApplications();
+          showSuccessToast({
+            title: "Application updated",
+            description: "Your changes were saved.",
+          });
           return;
         }
 
@@ -189,8 +189,17 @@ export function ApplicationTracker() {
 
         closeDialog();
         refreshApplications();
+        showSuccessToast({
+          title: "Application saved",
+          description: "The role was added to your tracker.",
+        });
       } catch (error) {
-        setSubmitError(getErrorMessage(error));
+        showErrorToast({
+          title: activeApplication
+            ? "Could not update application"
+            : "Could not save application",
+          description: getErrorMessage(error),
+        });
       } finally {
         setIsSubmitting(false);
       }
@@ -203,7 +212,6 @@ export function ApplicationTracker() {
       return;
     }
 
-    setSubmitError(null);
     setIsDeleting(true);
 
     try {
@@ -211,8 +219,15 @@ export function ApplicationTracker() {
       setIsDeleteAlertOpen(false);
       closeDialog(true);
       refreshApplications();
+      showSuccessToast({
+        title: "Application deleted",
+        description: "The role was removed from your tracker.",
+      });
     } catch (error) {
-      setSubmitError(getErrorMessage(error));
+      showErrorToast({
+        title: "Could not delete application",
+        description: getErrorMessage(error),
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -224,7 +239,6 @@ export function ApplicationTracker() {
         return;
       }
 
-      setMoveError(null);
       setMovingApplicationId(application.id);
 
       const previousGroups = applicationGroups;
@@ -287,7 +301,10 @@ export function ApplicationTracker() {
         refreshApplications();
       } catch (error) {
         setApplicationGroups(previousGroups);
-        setMoveError(getErrorMessage(error));
+        showErrorToast({
+          title: "Could not update status",
+          description: getErrorMessage(error),
+        });
       } finally {
         setMovingApplicationId(null);
       }
@@ -336,12 +353,6 @@ export function ApplicationTracker() {
           </div>
         </div>
 
-        {loadError || moveError ? (
-          <p className="rounded-md border border-red-500/30 bg-red-500/8 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-            {loadError ?? moveError}
-          </p>
-        ) : null}
-
         <ApplicationsList
           groups={applicationGroups}
           isLoading={isLoading}
@@ -357,7 +368,6 @@ export function ApplicationTracker() {
         onOpenChange={setIsDeleteAlertOpen}
         onConfirm={handleDelete}
         isDeleting={isDeleting}
-        error={submitError}
       />
 
       <ApplicationFormDialog
@@ -373,7 +383,6 @@ export function ApplicationTracker() {
         isSubmitting={isSubmitting}
         isDeleting={isDeleting}
         isLoadingSettings={isLoadingSettings}
-        error={submitError}
         isEditing={activeApplication !== null}
       />
     </>

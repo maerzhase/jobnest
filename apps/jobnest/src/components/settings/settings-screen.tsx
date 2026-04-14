@@ -10,6 +10,11 @@ import { appDataApi } from "../../lib/api/app-data";
 import { settingsApi } from "../../lib/api/settings";
 import { getErrorMessage } from "../../lib/error-handler";
 import type { SettingsSection } from "../../lib/settings";
+import {
+  showErrorToast,
+  showSuccessToast,
+  showWarningToast,
+} from "../../lib/toast";
 import { useSettings } from "../../hooks/use-settings";
 import { AppHeader } from "../app-header";
 import { AppearanceSettings } from "./appearance-settings";
@@ -21,17 +26,16 @@ import { SettingsSidebar } from "./settings-sidebar";
 export function SettingsScreen() {
   const router = useRouter();
   const { resolvedTheme, setTheme, theme } = useTheme();
-  const { settings, isLoading, error, message, loadSettings, updateCurrency, isSavingCurrency, clearMessage, clearError } = useSettings();
+  const { settings, isLoading, loadSettings, updateCurrency, isSavingCurrency } =
+    useSettings();
 
   const [activeSection, setActiveSection] = useState<SettingsSection>("appearance");
   const [isThemeReady, setIsThemeReady] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [confirmationInput, setConfirmationInput] = useState("");
   const [isResetting, setIsResetting] = useState(false);
-  const [resetError, setResetError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsThemeReady(true);
@@ -39,8 +43,6 @@ export function SettingsScreen() {
 
   const handleSectionChange = useCallback((section: SettingsSection) => {
     setActiveSection(section);
-    setImportError(null);
-    setResetError(null);
   }, []);
 
   const handleCurrencyChange = useCallback(
@@ -52,8 +54,6 @@ export function SettingsScreen() {
 
   const handleReset = useCallback(async () => {
     setIsResetting(true);
-    setResetError(null);
-    clearMessage();
 
     try {
       await settingsApi.reset();
@@ -65,17 +65,22 @@ export function SettingsScreen() {
       setConfirmationInput("");
       setIsResetDialogOpen(false);
       setActiveSection("appearance");
+      showSuccessToast({
+        title: "Data reset",
+        description: "Your local database and settings were reset.",
+      });
     } catch (err) {
-      setResetError(getErrorMessage(err));
+      showErrorToast({
+        title: "Could not reset data",
+        description: getErrorMessage(err),
+      });
     } finally {
       setIsResetting(false);
     }
-  }, [loadSettings, clearMessage]);
+  }, [loadSettings]);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
-    clearMessage();
-    clearError();
 
     try {
       const exportData = await appDataApi.export();
@@ -93,27 +98,33 @@ export function SettingsScreen() {
       });
 
       if (filePath) {
-        // Write file to chosen location
         await writeTextFile(filePath, dataStr);
-        // Show success message is handled by the component
+        showSuccessToast({
+          title: "Backup exported",
+          description: "Your data was saved to a JSON backup file.",
+        });
+      } else {
+        showWarningToast({
+          title: "Export canceled",
+          description: "No backup file was created.",
+        });
       }
     } catch (err) {
-      // Only show error if it's not a dialog cancellation
       const errorMsg = getErrorMessage(err);
       if (errorMsg && !errorMsg.toLowerCase().includes("cancelled")) {
-        clearError();
+        showErrorToast({
+          title: "Could not export data",
+          description: errorMsg,
+        });
       }
     } finally {
       setIsExporting(false);
     }
-  }, [clearMessage, clearError]);
+  }, []);
 
   const handleImport = useCallback(
     async (file: File) => {
       setIsImporting(true);
-      setImportError(null);
-      clearMessage();
-      clearError();
 
       try {
         const fileContent = await file.text();
@@ -124,13 +135,20 @@ export function SettingsScreen() {
         startTransition(() => {
           void loadSettings();
         });
+        showSuccessToast({
+          title: "Backup imported",
+          description: "Your local data was restored from the backup.",
+        });
       } catch (err) {
-        setImportError(getErrorMessage(err));
+        showErrorToast({
+          title: "Could not import backup",
+          description: getErrorMessage(err),
+        });
       } finally {
         setIsImporting(false);
       }
     },
-    [loadSettings, clearMessage, clearError]
+    [loadSettings]
   );
 
   return (
@@ -156,22 +174,19 @@ export function SettingsScreen() {
           />
 
           <div className="min-w-0">
-            {error || importError ? (
-              <p className="mb-6 border-l-2 border-red-500/50 pl-4 text-sm leading-6 text-red-700 dark:text-red-300">
-                {error || importError}
-              </p>
-            ) : null}
-
-            {message ? (
-              <p className="mb-6 border-l-2 border-emerald-500/50 pl-4 text-sm leading-6 text-emerald-700 dark:text-emerald-300">
-                {message}
-              </p>
-            ) : null}
-
-            {isLoading || !settings ? (
+            {isLoading ? (
               <p className="text-sm text-muted-foreground">
                 Loading settings...
               </p>
+            ) : !settings ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Settings are unavailable right now.
+                </p>
+                <Button onClick={() => void loadSettings()} type="button" variant="secondary">
+                  Retry
+                </Button>
+              </div>
             ) : activeSection === "appearance" ? (
               <AppearanceSettings
                 theme={theme}
@@ -190,7 +205,6 @@ export function SettingsScreen() {
                 onExport={handleExport}
                 onImport={handleImport}
                 onResetClick={() => {
-                  setResetError(null);
                   setConfirmationInput("");
                   setIsResetDialogOpen(true);
                 }}
@@ -209,7 +223,6 @@ export function SettingsScreen() {
         onConfirmationInputChange={setConfirmationInput}
         onConfirm={handleReset}
         isResetting={isResetting}
-        error={resetError}
       />
     </>
   );

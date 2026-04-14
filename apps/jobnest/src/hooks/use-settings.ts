@@ -2,35 +2,33 @@
 
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { settingsApi, type AppSettings } from "../lib/api/settings";
+import { getErrorMessage } from "../lib/error-handler";
+import { showErrorToast, showSuccessToast } from "../lib/toast";
 
 type UseSettingsReturn = {
   settings: AppSettings | null;
   isLoading: boolean;
-  error: string | null;
-  message: string | null;
   loadSettings: () => Promise<void>;
   updateCurrency: (currency: string) => Promise<void>;
   isSavingCurrency: boolean;
-  clearMessage: () => void;
-  clearError: () => void;
 };
 
 export function useSettings(): UseSettingsReturn {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
 
     try {
       const currentSettings = await settingsApi.get();
       setSettings(currentSettings);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load settings.");
+      showErrorToast({
+        title: "Could not load settings",
+        description: getErrorMessage(err),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -47,8 +45,6 @@ export function useSettings(): UseSettingsReturn {
       }
 
       setIsSavingCurrency(true);
-      setError(null);
-      setMessage(null);
 
       try {
         const updatedSettings = await settingsApi.update({
@@ -58,11 +54,15 @@ export function useSettings(): UseSettingsReturn {
         startTransition(() => {
           setSettings(updatedSettings);
         });
-        setMessage("Preferred currency updated.");
+        showSuccessToast({
+          title: "Settings updated",
+          description: "Preferred currency saved successfully.",
+        });
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to update settings."
-        );
+        showErrorToast({
+          title: "Could not update settings",
+          description: getErrorMessage(err),
+        });
       } finally {
         setIsSavingCurrency(false);
       }
@@ -70,23 +70,11 @@ export function useSettings(): UseSettingsReturn {
     [settings]
   );
 
-  const clearMessage = useCallback(() => {
-    setMessage(null);
-  }, []);
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
   return {
     settings,
     isLoading,
-    error,
-    message,
     loadSettings,
     updateCurrency,
     isSavingCurrency,
-    clearMessage,
-    clearError,
   };
 }
