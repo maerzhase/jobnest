@@ -286,20 +286,18 @@ export function ApplicationsList({
         onDragOver={handleDragOver}
         onDragStart={handleDragStart}
       >
-        <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2">
-          <div className="overflow-x-auto pb-2">
-            <div className="mx-auto w-full max-w-6xl px-6">
-              <div className="grid min-w-max grid-flow-col gap-4 auto-cols-[16rem] items-start">
-                {kanbanGroups.map((group) => (
-                  <KanbanColumn
-                    key={group.status}
-                    status={group.status}
-                    applications={group.applications}
-                    movingApplicationId={movingApplicationId}
-                    onEdit={onEdit}
-                  />
-                ))}
-              </div>
+        <div className="-mx-4 overflow-x-auto pb-2 sm:-mx-5">
+          <div className="px-4 sm:px-5">
+            <div className="grid min-w-max auto-cols-[16rem] grid-flow-col items-start gap-4">
+              {kanbanGroups.map((group) => (
+                <KanbanColumn
+                  key={group.status}
+                  status={group.status}
+                  applications={group.applications}
+                  movingApplicationId={movingApplicationId}
+                  onEdit={onEdit}
+                />
+              ))}
             </div>
           </div>
         </div>

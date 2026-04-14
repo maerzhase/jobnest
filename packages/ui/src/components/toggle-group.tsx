@@ -2,12 +2,22 @@
 
 import { Toggle as BaseToggle } from "@base-ui/react/toggle";
 import { ToggleGroup as BaseToggleGroup } from "@base-ui/react/toggle-group";
-import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  type ComponentPropsWithoutRef,
+  type JSX,
+  type ReactNode,
+} from "react";
 import { cn } from "../lib/cn";
 
 type BaseToggleGroupProps<Value extends string> = ComponentPropsWithoutRef<
   typeof BaseToggleGroup<Value>
 >;
+
+type ToggleGroupSize = "sm" | "md" | "lg";
+
+const ToggleGroupSizeContext = createContext<ToggleGroupSize>("md");
 
 export interface ToggleGroupProps<Value extends string>
   extends Omit<
@@ -17,6 +27,7 @@ export interface ToggleGroupProps<Value extends string>
   children: ReactNode;
   className?: string;
   defaultValue?: Value;
+  size?: ToggleGroupSize;
   onValueChange?: (
     value: Value | null,
     eventDetails: BaseToggleGroup.ChangeEventDetails,
@@ -29,28 +40,34 @@ export function ToggleGroup<Value extends string>({
   className,
   defaultValue,
   onValueChange,
+  size = "md",
   value,
   ...props
 }: ToggleGroupProps<Value>): JSX.Element {
   return (
-    <BaseToggleGroup
-      {...props}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1",
-        className,
-      )}
-      defaultValue={defaultValue ? [defaultValue] : undefined}
-      multiple={false}
-      onValueChange={(groupValue, eventDetails) => {
-        onValueChange?.(
-          (groupValue[0] as Value | undefined) ?? null,
-          eventDetails,
-        );
-      }}
-      value={value ? [value] : undefined}
-    >
-      {children}
-    </BaseToggleGroup>
+    <ToggleGroupSizeContext.Provider value={size}>
+      <BaseToggleGroup
+        {...props}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-xl border border-border/80 bg-black/[0.03] dark:bg-white/[0.04]",
+          size === "sm" && "p-0.5",
+          size === "md" && "p-1",
+          size === "lg" && "p-1.5",
+          className,
+        )}
+        defaultValue={defaultValue ? [defaultValue] : undefined}
+        multiple={false}
+        onValueChange={(groupValue, eventDetails) => {
+          onValueChange?.(
+            (groupValue[0] as Value | undefined) ?? null,
+            eventDetails,
+          );
+        }}
+        value={value ? [value] : undefined}
+      >
+        {children}
+      </BaseToggleGroup>
+    </ToggleGroupSizeContext.Provider>
   );
 }
 
@@ -69,11 +86,16 @@ export function ToggleGroupItem<Value extends string>({
   className,
   ...props
 }: ToggleGroupItemProps<Value>): JSX.Element {
+  const size = useContext(ToggleGroupSizeContext);
+
   return (
     <BaseToggle
       {...props}
       className={cn(
-        "inline-flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-md border border-transparent px-3 text-sm text-muted-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 data-[pressed]:border-foreground data-[pressed]:bg-foreground data-[pressed]:text-background",
+        "inline-flex cursor-pointer items-center justify-center border border-transparent text-muted-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 data-[pressed]:border-foreground data-[pressed]:bg-foreground data-[pressed]:text-background",
+        size === "sm" && "h-7 min-w-7 rounded-md px-2 text-xs",
+        size === "md" && "h-9 min-w-9 rounded-md px-3 text-sm",
+        size === "lg" && "h-11 min-w-11 rounded-lg px-4 text-sm",
         className,
       )}
     >

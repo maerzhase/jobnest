@@ -10,11 +10,11 @@ const meta: Meta<typeof Button> = {
   argTypes: {
     variant: {
       control: "inline-radio",
-      options: ["primary", "secondary"],
+      options: ["primary", "secondary", "ghost"],
     },
     size: {
       control: "inline-radio",
-      options: ["default", "sm", "lg"],
+      options: ["xs", "default", "sm", "lg"],
     },
   },
 };
@@ -32,6 +32,18 @@ export const Primary: Story = {
 export const Secondary: Story = {
   args: {
     variant: "secondary",
+  },
+};
+
+export const Ghost: Story = {
+  args: {
+    variant: "ghost",
+  },
+};
+
+export const ExtraSmall: Story = {
+  args: {
+    size: "xs",
   },
 };
 
