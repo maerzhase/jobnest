@@ -18,11 +18,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ApplicationStatusGroup } from "../../lib/api/applications";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import {
-  formatStatusLabel,
   STATUS_OPTIONS,
   type ApplicationStatus,
 } from "../../lib/status";
 import { ApplicationCard } from "./application-card";
+import { ApplicationStatusBadge } from "./application-status-badge";
 import { KanbanColumn } from "./kanban-column";
 import { trackerPanelClass } from "./styles";
 
@@ -315,9 +315,7 @@ export function ApplicationsList({
         >
           <CollapsibleTriggerButton className="hover:bg-muted/40">
             <span className="flex min-w-0 items-center gap-3">
-              <span className="text-sm font-semibold">
-                {formatStatusLabel(group.status)}
-              </span>
+              <ApplicationStatusBadge status={group.status} />
               <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                 {group.applications.length}
               </span>
