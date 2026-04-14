@@ -105,6 +105,9 @@ When the Changesets release PR is merged into `main`:
 - GitHub Actions builds the Tauri bundles for macOS, Linux, and Windows
 - the generated installers are uploaded to a GitHub Release
 
+For macOS releases, GitHub Actions must have Apple signing and notarization secrets configured.
+Without those secrets, the workflow now fails instead of uploading a bundle that Gatekeeper may flag as damaged.
+
 That means the canonical downloadable desktop builds live in GitHub Releases instead of only in CI artifacts.
 
 ## Important Files
