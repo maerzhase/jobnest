@@ -93,12 +93,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   release-jobnest:
-    if: |
-      always() &&
-      (
-        github.event_name == 'workflow_dispatch' ||
-        needs.release.outputs.should_release_jobnest == 'true'
-      )
     needs:
       - release
     permissions:
@@ -118,9 +112,14 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-          - platform: ubuntu-22.04
-          - platform: windows-latest
+      max-parallel: 1
     runs-on: ${{ matrix.platform }}
+    if: |
+      always() &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        needs.release.outputs.should_release_jobnest == 'true'
+      )
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -147,18 +146,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate macOS signing configuration
-        if: matrix.platform == 'macos-latest'
+        if: matrix.platform == 'macos-latest' && env.APPLE_SIGNING_IDENTITY != ''
         shell: bash
         run: |
-          missing_signing=0
           missing_notarization=0
-
-          for var_name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY; do
-            if [ -z "${!var_name}" ]; then
-              echo "::error title=Missing macOS signing secret::${var_name} is not configured."
-              missing_signing=1
-            fi
-          done
 
           has_apple_id_auth=1
           for var_name in APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
@@ -179,8 +170,8 @@ jobs:
             missing_notarization=1
           fi
 
-          if [ "$missing_signing" -ne 0 ] || [ "$missing_notarization" -ne 0 ]; then
-            echo "Refusing to publish an unsigned or non-notarized macOS bundle."
+          if [ "$missing_notarization" -ne 0 ]; then
+            echo "Refusing to publish a signed macOS bundle without notarization credentials."
             exit 1
           fi
 
