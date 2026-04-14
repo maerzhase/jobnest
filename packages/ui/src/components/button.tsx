@@ -6,7 +6,14 @@ import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
 const buttonVariants = cva(
-  "inline-flex cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60",
+  [
+    "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border",
+    "px-4 py-2 text-sm font-medium whitespace-nowrap",
+    "transition-colors",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "disabled:cursor-not-allowed disabled:opacity-60",
+  ].join(" "),
   {
     variants: {
       variant: {
@@ -15,9 +22,9 @@ const buttonVariants = cva(
         secondary: "border-input bg-background text-foreground hover:bg-muted",
       },
       size: {
-        default: "h-10",
-        sm: "h-9 px-3 text-xs",
-        lg: "h-11 px-6",
+        default: "h-10 has-[>svg]:px-3",
+        sm: "h-9 px-3 text-xs has-[>svg]:px-2.5",
+        lg: "h-11 px-6 has-[>svg]:px-5",
       },
     },
     defaultVariants: {

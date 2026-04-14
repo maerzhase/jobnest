@@ -1,4 +1,4 @@
-# @acme/ui
+# @jobnest/ui
 
 Minimal Base UI + Tailwind component package used by the monorepo template.
 
@@ -7,7 +7,7 @@ Minimal Base UI + Tailwind component package used by the monorepo template.
 Import components from the package:
 
 ```tsx
-import { Button } from "@acme/ui";
+import { Button } from "@jobnest/ui";
 ```
 
 Then choose one of the two style integration approaches:
@@ -17,7 +17,7 @@ Then choose one of the two style integration approaches:
 Best when you want the package to ship its own generated utility CSS.
 
 ```css
-@import "@acme/ui/styles.css";
+@import "@jobnest/ui/styles.css";
 ```
 
 ### 2. Use the theme-only export
@@ -28,7 +28,7 @@ generate the component utilities itself.
 ```css
 @import "./variants.css";
 @import "tailwindcss";
-@import "@acme/ui/theme.css";
+@import "@jobnest/ui/theme.css";
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 ```
 
@@ -41,5 +41,5 @@ In this setup:
 ## Exports
 
 - `Button`
-- `@acme/ui/styles.css` - full compiled stylesheet with Tailwind utilities and theme tokens
-- `@acme/ui/theme.css` - theme variables and base styles only, for apps that run their own Tailwind pipeline
+- `@jobnest/ui/styles.css` - full compiled stylesheet with Tailwind utilities and theme tokens
+- `@jobnest/ui/theme.css` - theme variables and base styles only, for apps that run their own Tailwind pipeline

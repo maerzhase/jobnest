@@ -14,7 +14,7 @@
   body {
     --background: #ffffff;
     --foreground: #000000;
-    --card: rgb(255 255 255 / 80%);
+    --card: rgb(255 255 255 / 90%);
     --card-foreground: #000000;
     --muted: rgb(0 0 0 / 0.04);
     --muted-foreground: rgb(0 0 0 / 0.62);
@@ -31,7 +31,7 @@
     body {
       --background: #000000;
       --foreground: #ffffff;
-      --card: rgb(255 255 255 / 0.04);
+      --card: rgb(0 0 0 / 0.6);
       --card-foreground: #ffffff;
       --muted: rgb(255 255 255 / 0.08);
       --muted-foreground: rgb(255 255 255 / 0.68);
@@ -39,17 +39,12 @@
       --input: rgb(255 255 255 / 0.14);
       --ring: rgb(255 255 255 / 0.55);
       --page-background:
-        radial-gradient(
-          circle at top,
-          rgb(255 255 255 / 0.08),
-          transparent 34%
-        ),
+        radial-gradient(circle at top, rgb(255 255 255 / 0.08), transparent 34%),
         radial-gradient(
           circle at bottom right,
           rgb(255 255 255 / 0.04),
           transparent 26%
-        ),
-        linear-gradient(180deg, #050505 0%, #000000 100%);
+        ), linear-gradient(180deg, #050505 0%, #000000 100%);
       color-scheme: dark;
     }
   }

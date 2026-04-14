@@ -16,6 +16,10 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      should_release_jobnest: ${{ steps.jobnest-version.outputs.changed }}
+      jobnest_version: ${{ steps.jobnest-version.outputs.current_version }}
+      jobnest_tag: ${{ steps.jobnest-version.outputs.tag_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +39,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Detect jobnest version change
+        id: jobnest-version
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(node -p "require('./apps/jobnest/package.json').version")
+          PREVIOUS_VERSION=$(git show "${{ github.event.before }}:apps/jobnest/package.json" 2>/dev/null | node -e "let input='';process.stdin.on('data', chunk => input += chunk);process.stdin.on('end', () => { if (!input.trim()) process.exit(1); console.log(JSON.parse(input).version); });" || true)
+
+          if [ -n "$PREVIOUS_VERSION" ] && [ "$PREVIOUS_VERSION" = "$CURRENT_VERSION" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=jobnest-v$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build
         run: pnpm build
 
@@ -49,3 +69,53 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  release-jobnest:
+    needs: release
+    if: needs.release.outputs.should_release_jobnest == 'true'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+          - platform: ubuntu-22.04
+          - platform: windows-latest
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and upload jobnest release bundle
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/jobnest
+          tagName: ${{ needs.release.outputs.jobnest_tag }}
+          releaseName: jobnest v__VERSION__
+          releaseBody: Desktop bundles for jobnest v__VERSION__.
+          releaseDraft: false
+          prerelease: false
