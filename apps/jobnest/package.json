@@ -8,6 +8,7 @@
     "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-fs": "^2",
     "@tauri-apps/plugin-opener": "^2",
+    "class-variance-authority": "0.7.1",
     "next": "16.2.1",
     "next-themes": "^0.4.6",
     "react": "19.2.4",
