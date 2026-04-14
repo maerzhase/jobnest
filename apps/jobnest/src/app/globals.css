@@ -5,6 +5,14 @@
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --desktop-titlebar-inset: 24px;
+  --desktop-titlebar-content-offset: 0px;
+}
+
+@utility app-window-content {
+  padding-top: calc(
+    var(--desktop-titlebar-inset) + var(--desktop-titlebar-content-offset)
+  );
 }
 
 @layer base {

@@ -20,7 +20,8 @@ use services::{ApplicationsService, SettingsService};
 use specta_typescript::Typescript;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
-    AppHandle, Manager, PhysicalPosition, PhysicalSize, RunEvent, Window, WindowEvent,
+    AppHandle, Manager, PhysicalPosition, PhysicalSize, TitleBarStyle, WebviewUrl,
+    WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 pub struct AppState {
@@ -155,6 +156,13 @@ pub fn run() {
                 settings,
             });
             app.manage(WindowStateController::new());
+
+            let window = build_main_window(app)?;
+
+            if let Err(err) = restore_window_state(&window, app.handle()) {
+                eprintln!("failed to restore window state: {err}");
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| match event {
@@ -200,15 +208,7 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|app_handle, event| {
-        if let RunEvent::Ready = event {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                if let Err(err) = restore_window_state(&window, app_handle) {
-                    eprintln!("failed to restore window state: {err}");
-                }
-            }
-        }
-    });
+    app.run(|_, _| {});
 }
 
 pub fn export_typescript_bindings() -> Result<(), Box<dyn std::error::Error>> {
@@ -277,6 +277,19 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
     let menu = MenuBuilder::new(app).item(&view_submenu).build()?;
 
     Ok(menu)
+}
+
+fn build_main_window(app: &tauri::App) -> tauri::Result<WebviewWindow> {
+    let window_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+        .title("jobnest")
+        .inner_size(800.0, 600.0);
+
+    #[cfg(target_os = "macos")]
+    let window_builder = window_builder
+        .title_bar_style(TitleBarStyle::Overlay)
+        .hidden_title(true);
+
+    window_builder.build()
 }
 
 fn navigate_main_window(app: &tauri::AppHandle, path: &str) -> tauri::Result<()> {

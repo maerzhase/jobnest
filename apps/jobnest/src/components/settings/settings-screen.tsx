@@ -135,7 +135,7 @@ export function SettingsScreen() {
 
   return (
     <>
-      <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-10">
+      <main className="app-window-content mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pb-10">
         <div className="space-y-5">
           <Button
             className="w-fit gap-2"

@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export function AppHeader() {
   return (
-    <header className="flex items-center gap-3">
+    <header className="flex items-center gap-3" data-tauri-drag-region>
       <Image
         src="/icon-transparent.png"
         alt=""
