@@ -20,8 +20,8 @@ use services::{ApplicationsService, SettingsService};
 use specta_typescript::Typescript;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
-    AppHandle, Manager, PhysicalPosition, PhysicalSize, TitleBarStyle, WebviewUrl,
-    WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
+    AppHandle, LogicalPosition, Manager, PhysicalPosition, PhysicalSize, TitleBarStyle,
+    WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 pub struct AppState {
@@ -287,6 +287,7 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<WebviewWindow> {
     #[cfg(target_os = "macos")]
     let window_builder = window_builder
         .title_bar_style(TitleBarStyle::Overlay)
+        .traffic_light_position(LogicalPosition::new(16.0, 22.0))
         .hidden_title(true);
 
     window_builder.build()
