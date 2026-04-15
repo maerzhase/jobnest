@@ -378,7 +378,7 @@ export function ApplicationTracker() {
           className={`px-4 pt-4 sm:px-5 ${
             viewMode === "kanban"
               ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-              : ""
+              : "min-h-0 flex-1 overflow-y-auto"
           }`}
         >
           <ApplicationsList
