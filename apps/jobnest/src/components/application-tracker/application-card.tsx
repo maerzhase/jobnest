@@ -169,7 +169,7 @@ export function ApplicationCardDragPreview({
   onEdit,
 }: Pick<ApplicationCardProps, "application" | "onEdit">) {
   return (
-    <div className="w-[16rem] rounded-xl border border-foreground/15 bg-card shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+    <div className="rounded-xl border border-foreground/15 bg-card shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
       <ApplicationCardContent
         application={application}
         onEdit={onEdit}
