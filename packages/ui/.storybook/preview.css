@@ -2,20 +2,37 @@
 @source "../src/**/*.{ts,tsx}";
 
 :root {
-  --story-bg: var(--page-background);
-  --story-fg: var(--foreground);
+  --story-bg:
+    radial-gradient(circle at top, rgb(0 0 0 / 0.035), transparent 42%),
+    linear-gradient(180deg, #f7f7f7 0%, #ffffff 100%);
+  --story-fg: #000000;
+}
+
+html.dark {
+  --story-bg:
+    radial-gradient(circle at top, rgb(255 255 255 / 0.08), transparent 34%),
+    radial-gradient(
+      circle at bottom right,
+      rgb(255 255 255 / 0.04),
+      transparent 26%
+    ), linear-gradient(180deg, #050505 0%, #000000 100%);
+  --story-fg: #ffffff;
 }
 
 html,
-body,
-#storybook-root,
-#storybook-docs {
+body {
   background: var(--story-bg);
   color: var(--story-fg);
 }
 
 body {
+  min-height: 100vh;
   transition:
     background-color 160ms ease,
     color 160ms ease;
+}
+
+#storybook-root,
+#storybook-docs {
+  color: var(--story-fg);
 }
