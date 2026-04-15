@@ -35,20 +35,11 @@ export const Secondary: Story = {
   },
 };
 
-<<<<<<< Updated upstream
-=======
-export const Ghost: Story = {
-  args: {
-    variant: "ghost",
-  },
-};
-
 export const Variants: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
       <Button variant="primary">Primary</Button>
       <Button variant="secondary">Secondary</Button>
-      <Button variant="ghost">Ghost</Button>
     </div>
   ),
 };
@@ -56,7 +47,6 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
-      <Button size="xs">Extra small</Button>
       <Button size="sm">Small</Button>
       <Button size="default">Default</Button>
       <Button size="lg">Large</Button>
@@ -64,13 +54,6 @@ export const Sizes: Story = {
   ),
 };
 
-export const ExtraSmall: Story = {
-  args: {
-    size: "xs",
-  },
-};
-
->>>>>>> Stashed changes
 export const Large: Story = {
   args: {
     size: "lg",

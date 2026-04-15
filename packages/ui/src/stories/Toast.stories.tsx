@@ -97,7 +97,7 @@ function ToastDemo({
               type: "error",
             })
           }
-          variant="ghost"
+          variant="secondary"
         >
           Error
         </Button>
