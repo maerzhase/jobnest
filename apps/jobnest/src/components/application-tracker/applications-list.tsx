@@ -7,6 +7,7 @@ import {
 } from "@jobnest/ui";
 import {
   DndContext,
+  DragOverlay,
   type DragCancelEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -21,7 +22,7 @@ import {
   STATUS_OPTIONS,
   type ApplicationStatus,
 } from "../../lib/status";
-import { ApplicationCard } from "./application-card";
+import { ApplicationCard, ApplicationCardDragPreview } from "./application-card";
 import { ApplicationStatusBadge } from "./application-status-badge";
 import { KanbanColumn } from "./kanban-column";
 import { trackerPanelClass } from "./styles";
@@ -90,6 +91,8 @@ export function ApplicationsList({
   const [kanbanGroups, setKanbanGroups] = useState<KanbanGroup[]>(() =>
     buildKanbanGroups(groups)
   );
+  const [dragPreviewApplication, setDragPreviewApplication] =
+    useState<ApplicationListItem | null>(null);
   const kanbanGroupsRef = useRef<KanbanGroup[]>(kanbanGroups);
   const previousKanbanGroupsRef = useRef<KanbanGroup[] | null>(null);
 
@@ -129,8 +132,11 @@ export function ApplicationsList({
     );
   }
 
-  const handleDragStart = (_event: DragStartEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
     previousKanbanGroupsRef.current = kanbanGroupsRef.current;
+    setDragPreviewApplication(
+      applicationsById.get(event.active.id as string) ?? null
+    );
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
@@ -138,6 +144,7 @@ export function ApplicationsList({
       setTrackedKanbanGroups(previousKanbanGroupsRef.current);
       previousKanbanGroupsRef.current = null;
     }
+    setDragPreviewApplication(null);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -223,6 +230,7 @@ export function ApplicationsList({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const applicationId = active.id as string;
+    setDragPreviewApplication(null);
 
     if (!over || movingApplicationId) {
       previousKanbanGroupsRef.current = null;
@@ -286,9 +294,9 @@ export function ApplicationsList({
         onDragOver={handleDragOver}
         onDragStart={handleDragStart}
       >
-        <div className="-mx-4 overflow-x-auto pb-2 sm:-mx-5">
-          <div className="px-4 sm:px-5">
-            <div className="grid min-w-max auto-cols-[16rem] grid-flow-col items-start gap-4">
+        <div className="-mx-4 min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-4 sm:-mx-5">
+          <div className="h-full min-h-0 px-4 sm:px-5">
+            <div className="grid h-full min-w-max auto-cols-[16rem] grid-flow-col gap-4">
               {kanbanGroups.map((group) => (
                 <KanbanColumn
                   key={group.status}
@@ -301,6 +309,14 @@ export function ApplicationsList({
             </div>
           </div>
         </div>
+        <DragOverlay>
+          {dragPreviewApplication ? (
+            <ApplicationCardDragPreview
+              application={dragPreviewApplication}
+              onEdit={onEdit}
+            />
+          ) : null}
+        </DragOverlay>
       </DndContext>
     );
   }

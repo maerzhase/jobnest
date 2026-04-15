@@ -37,11 +37,11 @@ function KanbanColumnComponent({
   return (
     <section
       ref={setNodeRef}
-      className={`${trackerPanelClass} flex flex-col ${
+      className={`${trackerPanelClass} flex h-full min-h-0 flex-col ${
         isOver && applications.length > 0 ? "border-primary/50" : "border-border"
       }`}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3>
           <ApplicationStatusBadge status={status} />
         </h3>
@@ -50,7 +50,7 @@ function KanbanColumnComponent({
         </span>
       </header>
 
-      <div className="p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <SortableContext
           items={itemIds}
           strategy={verticalListSortingStrategy}
