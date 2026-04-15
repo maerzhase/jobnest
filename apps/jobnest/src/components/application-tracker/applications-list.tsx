@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ApplicationStatusGroup } from "../../lib/api/applications";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import {
@@ -93,8 +94,16 @@ export function ApplicationsList({
   );
   const [dragPreviewApplication, setDragPreviewApplication] =
     useState<ApplicationListItem | null>(null);
+  const [dragPreviewWidth, setDragPreviewWidth] =
+    useState<number | undefined>(undefined);
+  const [dragOverlayContainer, setDragOverlayContainer] =
+    useState<HTMLElement | null>(null);
   const kanbanGroupsRef = useRef<KanbanGroup[]>(kanbanGroups);
   const previousKanbanGroupsRef = useRef<KanbanGroup[] | null>(null);
+
+  useEffect(() => {
+    setDragOverlayContainer(document.body);
+  }, []);
 
   useEffect(() => {
     const nextGroups = buildKanbanGroups(groups);
@@ -137,6 +146,7 @@ export function ApplicationsList({
     setDragPreviewApplication(
       applicationsById.get(event.active.id as string) ?? null
     );
+    setDragPreviewWidth(event.active.rect.current.initial?.width);
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
@@ -145,6 +155,7 @@ export function ApplicationsList({
       previousKanbanGroupsRef.current = null;
     }
     setDragPreviewApplication(null);
+    setDragPreviewWidth(undefined);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -231,6 +242,7 @@ export function ApplicationsList({
     const { active, over } = event;
     const applicationId = active.id as string;
     setDragPreviewApplication(null);
+    setDragPreviewWidth(undefined);
 
     if (!over || movingApplicationId) {
       previousKanbanGroupsRef.current = null;
@@ -286,6 +298,23 @@ export function ApplicationsList({
   };
 
   if (viewMode === "kanban") {
+    const dragOverlay = (
+      <DragOverlay>
+        {dragPreviewApplication ? (
+          <div
+            style={{
+              width: dragPreviewWidth,
+            }}
+          >
+            <ApplicationCardDragPreview
+              application={dragPreviewApplication}
+              onEdit={onEdit}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    );
+
     return (
       <DndContext
         collisionDetection={closestCenter}
@@ -309,14 +338,9 @@ export function ApplicationsList({
             </div>
           </div>
         </div>
-        <DragOverlay>
-          {dragPreviewApplication ? (
-            <ApplicationCardDragPreview
-              application={dragPreviewApplication}
-              onEdit={onEdit}
-            />
-          ) : null}
-        </DragOverlay>
+        {dragOverlayContainer
+          ? createPortal(dragOverlay, dragOverlayContainer)
+          : dragOverlay}
       </DndContext>
     );
   }
