@@ -2,20 +2,14 @@
 @source "../src/**/*.{ts,tsx}";
 
 :root {
-  --story-bg: #f8fafc;
-  --story-fg: #0f172a;
-  --story-muted-border: rgb(15 23 42 / 0.12);
-}
-
-html.dark {
-  --story-bg: #020617;
-  --story-fg: #e2e8f0;
-  --story-muted-border: rgb(226 232 240 / 0.16);
+  --story-bg: var(--page-background);
+  --story-fg: var(--foreground);
 }
 
 html,
 body,
-#storybook-root {
+#storybook-root,
+#storybook-docs {
   background: var(--story-bg);
   color: var(--story-fg);
 }
