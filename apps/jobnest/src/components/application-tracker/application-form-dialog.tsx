@@ -123,6 +123,7 @@ export function ApplicationFormDialog({
             error={errors.jobPostUrl?.message}
             label="Link to job post"
             name="jobPostUrl"
+            required
           >
             <Input
               autoComplete="url"
