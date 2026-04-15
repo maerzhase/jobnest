@@ -337,7 +337,7 @@ export function ApplicationTracker() {
   return (
     <>
       <section className="flex h-full min-h-0 w-full flex-col">
-        <div className="sticky top-0 z-10 w-full border-b border-border/40 bg-card">
+        <div className="sticky top-0 z-10 w-full border-b border-border/40 backdrop-blur-xl backdrop-saturate-150 dark:bg-card/50">
           <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5">
             <div>
               <h2>
@@ -375,11 +375,10 @@ export function ApplicationTracker() {
         </div>
 
         <div
-          className={`px-4 pt-4 sm:px-5 ${
-            viewMode === "kanban"
+          className={`px-4 pt-4 sm:px-5 ${viewMode === "kanban"
               ? "flex min-h-0 flex-1 flex-col overflow-hidden"
               : "min-h-0 flex-1 overflow-y-auto"
-          }`}
+            }`}
         >
           <ApplicationsList
             groups={applicationGroups}

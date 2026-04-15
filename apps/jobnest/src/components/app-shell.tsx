@@ -17,7 +17,7 @@ export function AppShell({ children }: AppShellProps) {
   const isSettingsPage = pathname.startsWith("/settings");
 
   return (
-    <div className="grid h-screen grid-cols-[16rem_minmax(0,1fr)] gap-2 bg-background p-2">
+    <div className="grid h-screen grid-cols-[16rem_minmax(0,1fr)] gap-2 bg-page p-2">
       <aside className="flex h-full flex-col gap-2 px-1">
         <div className="mt-1 flex items-center justify-end gap-1">
           <HistoryToolbar />
