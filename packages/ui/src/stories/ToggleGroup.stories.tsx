@@ -13,13 +13,6 @@ const meta: Meta<typeof ToggleGroup<ViewMode>> = {
   component: ToggleGroup<ViewMode>,
   args: {
     defaultValue: "list",
-    size: "md",
-  },
-  argTypes: {
-    size: {
-      control: "inline-radio",
-      options: ["sm", "md", "lg"],
-    },
   },
 };
 
@@ -39,28 +32,6 @@ function ToggleGroupExample(args: ToggleGroupProps<ViewMode>) {
 
 export const Default: Story = {
   render: ToggleGroupExample,
-};
-
-export const Sizes: Story = {
-  render: () => (
-    <div className="grid gap-4">
-      <ToggleGroup defaultValue="list" size="sm">
-        <ToggleGroupItem value="list">List</ToggleGroupItem>
-        <ToggleGroupItem value="board">Board</ToggleGroupItem>
-        <ToggleGroupItem value="calendar">Calendar</ToggleGroupItem>
-      </ToggleGroup>
-      <ToggleGroup defaultValue="board" size="md">
-        <ToggleGroupItem value="list">List</ToggleGroupItem>
-        <ToggleGroupItem value="board">Board</ToggleGroupItem>
-        <ToggleGroupItem value="calendar">Calendar</ToggleGroupItem>
-      </ToggleGroup>
-      <ToggleGroup defaultValue="calendar" size="lg">
-        <ToggleGroupItem value="list">List</ToggleGroupItem>
-        <ToggleGroupItem value="board">Board</ToggleGroupItem>
-        <ToggleGroupItem value="calendar">Calendar</ToggleGroupItem>
-      </ToggleGroup>
-    </div>
-  ),
 };
 
 export const Controlled: Story = {
