@@ -5,9 +5,9 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import {
-  formatStatusLabel,
   type ApplicationStatus,
 } from "../../lib/status";
+import { ApplicationStatusBadge } from "./application-status-badge";
 import { ApplicationCard } from "./application-card";
 import { trackerPanelClass } from "./styles";
 
@@ -36,40 +36,36 @@ function KanbanColumnComponent({
   return (
     <section
       ref={setNodeRef}
-      className={`${trackerPanelClass} flex flex-col ${
+      className={`${trackerPanelClass} flex h-full min-h-0 flex-col ${
         isOver && applications.length > 0 ? "border-primary/50" : "border-border"
       }`}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <h3 className="text-sm font-semibold">
-          {formatStatusLabel(status)}
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <h3>
+          <ApplicationStatusBadge status={status} />
         </h3>
         <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
           {applications.length}
         </span>
       </header>
 
-      <div className="p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <SortableContext
           items={itemIds}
           strategy={verticalListSortingStrategy}
         >
-          {applications.length > 0 ? (
-            <ul className="space-y-4">
-              {applications.map((application) => (
-                <ApplicationCard
-                  key={application.id}
-                  application={application}
-                  isDragging={movingApplicationId === application.id}
-                  onEdit={onEdit}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border bg-background/40 px-4 py-8 text-center text-sm text-muted-foreground">
-              No applications in {formatStatusLabel(status).toLowerCase()}.
-            </div>
-          )}
+          <ul className="space-y-4">
+            {applications.map((application) => (
+              <ApplicationCard
+                key={application.id}
+                application={application}
+                isDragging={movingApplicationId === application.id}
+                onEdit={onEdit}
+                showDragHandle
+                showStatus={false}
+              />
+            ))}
+          </ul>
         </SortableContext>
       </div>
     </section>
