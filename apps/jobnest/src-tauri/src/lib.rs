@@ -252,9 +252,28 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
     let open_home = MenuItemBuilder::with_id("open-home", "Applications").build(app)?;
     let open_settings = MenuItemBuilder::with_id("open-settings", "Settings…").build(app)?;
     let separator = PredefinedMenuItem::separator(app)?;
+    let edit_separator = PredefinedMenuItem::separator(app)?;
+    let undo = PredefinedMenuItem::undo(app, None)?;
+    let redo = PredefinedMenuItem::redo(app, None)?;
+    let cut = PredefinedMenuItem::cut(app, None)?;
+    let copy = PredefinedMenuItem::copy(app, None)?;
+    let paste = PredefinedMenuItem::paste(app, None)?;
+    let select_all = PredefinedMenuItem::select_all(app, None)?;
 
     let view_submenu = SubmenuBuilder::new(app, "View")
         .items(&[&open_home, &open_settings, &separator])
+        .build()?;
+
+    let edit_submenu = SubmenuBuilder::new(app, "Edit")
+        .items(&[
+            &undo,
+            &redo,
+            &edit_separator,
+            &cut,
+            &copy,
+            &paste,
+            &select_all,
+        ])
         .build()?;
 
     #[cfg(target_os = "macos")]
@@ -269,12 +288,16 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
 
         MenuBuilder::new(app)
             .item(&app_submenu)
+            .item(&edit_submenu)
             .item(&view_submenu)
             .build()?
     };
 
     #[cfg(not(target_os = "macos"))]
-    let menu = MenuBuilder::new(app).item(&view_submenu).build()?;
+    let menu = MenuBuilder::new(app)
+        .item(&edit_submenu)
+        .item(&view_submenu)
+        .build()?;
 
     Ok(menu)
 }
