@@ -110,6 +110,23 @@ Without those secrets, the workflow now fails instead of uploading a bundle that
 
 That means the canonical downloadable desktop builds live in GitHub Releases instead of only in CI artifacts.
 
+## In-App Updates
+
+JobNest now exposes a native `Check for Updates…` menu item:
+
+- macOS: `JobNest` -> `Check for Updates…`
+- Windows/Linux: `Help` -> `Check for Updates…`
+
+Release builds can now publish updater artifacts to GitHub Releases. To finish enabling that flow in CI, add these secrets:
+
+- `JOBNEST_UPDATER_PUBLIC_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+The release workflow injects the updater endpoint for:
+
+- `https://github.com/maerzhase/jobnest/releases/latest/download/latest.json`
+
 ## Important Files
 
 - `package.json` - app scripts and frontend dependencies
