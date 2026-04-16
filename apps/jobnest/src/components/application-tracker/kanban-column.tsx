@@ -4,9 +4,7 @@ import { memo, useMemo } from "react";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import type { ApplicationListItem } from "../../lib/form-mappers";
-import {
-  type ApplicationStatus,
-} from "../../lib/status";
+import type { ApplicationStatus } from "../../lib/status";
 import { ApplicationStatusBadge } from "./application-status-badge";
 import { ApplicationCard } from "./application-card";
 import { trackerPanelClass } from "./styles";
