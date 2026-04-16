@@ -170,6 +170,7 @@ export function ApplicationTracker() {
             jobPostUrl: values.jobPostUrl,
             companyName: values.companyName,
             roleTitle: values.roleTitle,
+            applicationSource: values.applicationSource,
             salaryExpectation: formatSalaryValue(
               values.salaryExpectation,
               values.salaryExpectationCurrency || preferredCurrency
@@ -195,6 +196,7 @@ export function ApplicationTracker() {
           jobPostUrl: values.jobPostUrl,
           companyName: values.companyName,
           roleTitle: values.roleTitle,
+          applicationSource: values.applicationSource,
           salaryExpectation: formatSalaryValue(
             values.salaryExpectation,
             values.salaryExpectationCurrency || preferredCurrency
@@ -312,6 +314,7 @@ export function ApplicationTracker() {
           jobPostUrl: application.jobPostUrl ?? "",
           companyName: application.companyName,
           roleTitle: application.roleTitle,
+          applicationSource: application.applicationSource,
           salaryExpectation: formatSalaryValue(
             expectation.amount,
             expectation.currency
