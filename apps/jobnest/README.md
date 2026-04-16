@@ -54,6 +54,19 @@ pnpm install
 
 ## Development
 
+### Environment Variables
+
+Copy the example file and create your local overrides in `apps/jobnest/.env.local`:
+
+```bash
+cp apps/jobnest/.env.example apps/jobnest/.env.local
+```
+
+Currently supported local env vars:
+
+- `NEXT_PUBLIC_JOBNEST_MOCK_UPDATE_NOTICE=true`
+  - Shows the sidebar update notice in development so you can preview the UI without publishing a real update.
+
 Run the frontend only:
 
 ```bash

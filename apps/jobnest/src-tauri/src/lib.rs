@@ -33,6 +33,13 @@ pub struct AppState {
     settings: SettingsService,
 }
 
+#[derive(Clone, Debug, Serialize, specta::Type)]
+pub struct AvailableUpdate {
+    version: String,
+    current_version: String,
+    body: Option<String>,
+}
+
 #[derive(Default)]
 struct UpdateCheckController {
     in_progress: AtomicBool,
@@ -145,7 +152,9 @@ pub fn run() {
             commands::update_app_settings,
             commands::reset_app_data,
             commands::export_app_data,
-            commands::import_app_data
+            commands::import_app_data,
+            commands::check_for_available_update,
+            commands::run_interactive_update_check
         ]);
 
     let builder = tauri::Builder::default()
@@ -242,7 +251,9 @@ pub fn export_typescript_bindings() -> Result<(), Box<dyn std::error::Error>> {
             commands::update_app_settings,
             commands::reset_app_data,
             commands::export_app_data,
-            commands::import_app_data
+            commands::import_app_data,
+            commands::check_for_available_update,
+            commands::run_interactive_update_check
         ])
         .export(
             Typescript::default().header(
@@ -406,12 +417,7 @@ fn window_state_path(app_handle: &AppHandle) -> Result<PathBuf, Box<dyn std::err
 }
 
 fn trigger_update_check(app: &AppHandle) {
-    let already_running = app
-        .state::<UpdateCheckController>()
-        .in_progress
-        .swap(true, Ordering::SeqCst);
-
-    if already_running {
+    let Some(guard) = try_start_update_check(app) else {
         show_message_dialog(
             app,
             "Update check already in progress",
@@ -419,11 +425,11 @@ fn trigger_update_check(app: &AppHandle) {
             MessageDialogKind::Info,
         );
         return;
-    }
+    };
 
     let app_handle = app.clone();
     thread::spawn(move || {
-        let _guard = UpdateCheckGuard::new(app_handle.clone());
+        let _guard = guard;
 
         if let Err(err) = run_update_check(&app_handle) {
             eprintln!("failed to check for updates: {err}");
@@ -447,6 +453,19 @@ impl UpdateCheckGuard {
     }
 }
 
+fn try_start_update_check(app: &AppHandle) -> Option<UpdateCheckGuard> {
+    let already_running = app
+        .state::<UpdateCheckController>()
+        .in_progress
+        .swap(true, Ordering::SeqCst);
+
+    if already_running {
+        None
+    } else {
+        Some(UpdateCheckGuard::new(app.clone()))
+    }
+}
+
 impl Drop for UpdateCheckGuard {
     fn drop(&mut self) {
         self.app_handle
@@ -456,11 +475,42 @@ impl Drop for UpdateCheckGuard {
     }
 }
 
-fn run_update_check(app: &AppHandle) -> Result<(), String> {
-    let update = tauri::async_runtime::block_on(async {
+pub async fn check_for_available_update_with_guard(
+    app: AppHandle,
+) -> Result<Option<AvailableUpdate>, String> {
+    #[cfg(desktop)]
+    {
         let updater = app.updater().map_err(|err| err.to_string())?;
-        updater.check().await.map_err(|err| err.to_string())
-    })?;
+        let update = updater.check().await.map_err(|err| err.to_string())?;
+
+        Ok(update.map(|update| AvailableUpdate {
+            version: update.version.to_string(),
+            current_version: update.current_version.to_string(),
+            body: update.body,
+        }))
+    }
+
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        Ok(None)
+    }
+}
+
+pub async fn run_interactive_update_check_with_guard(app: AppHandle) -> Result<(), String> {
+    let Some(_guard) = try_start_update_check(&app) else {
+        return Err("An update check is already in progress.".into());
+    };
+
+    let app_handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || run_update_check(&app_handle))
+        .await
+        .map_err(|err| err.to_string())?
+}
+
+fn run_update_check(app: &AppHandle) -> Result<(), String> {
+    let update =
+        tauri::async_runtime::block_on(check_for_available_update_with_guard(app.clone()))?;
 
     let Some(update) = update else {
         show_message_dialog(
@@ -507,7 +557,12 @@ fn run_update_check(app: &AppHandle) -> Result<(), String> {
     );
 
     tauri::async_runtime::block_on(async {
-        update
+        app.updater()
+            .map_err(|err| err.to_string())?
+            .check()
+            .await
+            .map_err(|err| err.to_string())?
+            .ok_or_else(|| "No update was available when installation started.".to_string())?
             .download_and_install(|_, _| {}, || {})
             .await
             .map_err(|err| err.to_string())
