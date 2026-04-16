@@ -28,6 +28,12 @@ export const commands = {
 	resetAppData: () => __TAURI_INVOKE<AppSettings>("reset_app_data"),
 	exportAppData: () => __TAURI_INVOKE<ExportData>("export_app_data"),
 	importAppData: (input: ImportDataInput) => __TAURI_INVOKE<ExportData>("import_app_data", { input }),
+	checkForAvailableUpdate: () => __TAURI_INVOKE<{
+	version: string,
+	current_version: string,
+	body: string | null,
+} | null>("check_for_available_update"),
+	runInteractiveUpdateCheck: () => __TAURI_INVOKE<null>("run_interactive_update_check"),
 };
 
 /* Types */
@@ -81,6 +87,12 @@ export type Attachment = {
 	filePath: string,
 	mimeType: string | null,
 	createdAt: string,
+};
+
+export type AvailableUpdate = {
+	version: string,
+	current_version: string,
+	body: string | null,
 };
 
 export type Company = {

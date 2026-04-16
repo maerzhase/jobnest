@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { HistoryToolbar } from "./history-toolbar";
 import { ContentCard } from "./content-card";
+import { UpdateNotice } from "./update-notice";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -56,7 +57,7 @@ export function AppShell({ children }: AppShellProps) {
           <IconPlus aria-hidden="true" className="size-4" />
           Add application
         </Button>
-
+        <UpdateNotice />
       </aside>
 
       <div className="min-h-0 min-w-0">
