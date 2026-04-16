@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AppShell } from "../components/app-shell";
 import { ThemeProvider } from "../components/theme-provider";
 import "./globals.css";
 
@@ -16,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AppShell>{children}</AppShell>
+        </ThemeProvider>
       </body>
     </html>
   );

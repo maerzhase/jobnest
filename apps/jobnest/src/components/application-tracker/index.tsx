@@ -3,9 +3,9 @@
 import {
   IconLayoutKanban,
   IconListDetails,
-  IconPlus,
 } from "@tabler/icons-react";
-import { Button, ToggleGroup, ToggleGroupItem } from "@jobnest/ui";
+import { ToggleGroup, ToggleGroupItem } from "@jobnest/ui";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import {
   applicationsApi,
@@ -33,6 +33,9 @@ type ApplicationDialogState =
 type ApplicationViewMode = "list" | "kanban";
 
 export function ApplicationTracker() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [applicationGroups, setApplicationGroups] = useState<
     ApplicationStatusGroup[]
   >([]);
@@ -54,10 +57,24 @@ export function ApplicationTracker() {
     dialogState?.mode === "edit" ? dialogState.application : null;
   const isDialogOpen = dialogState !== null;
   const preferredCurrency = settings?.preferredCurrency ?? "EUR";
+  const shouldOpenCreateDialog = searchParams.get("new") === "1";
   const totalApplications = applicationGroups.reduce(
     (count, group) => count + group.applications.length,
     0
   );
+
+  const clearCreateDialogParam = useCallback(() => {
+    if (!shouldOpenCreateDialog) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete("new");
+    const nextQuery = nextSearchParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+      scroll: false,
+    });
+  }, [pathname, router, searchParams, shouldOpenCreateDialog]);
 
   const loadApplications = useCallback(async () => {
     setIsLoading(true);
@@ -102,6 +119,15 @@ export function ApplicationTracker() {
     }
   }, [isDialogOpen, loadSettings]);
 
+  useEffect(() => {
+    if (!shouldOpenCreateDialog || isDialogOpen) {
+      return;
+    }
+
+    setIsDeleteAlertOpen(false);
+    setDialogState({ mode: "create" });
+  }, [isDialogOpen, shouldOpenCreateDialog]);
+
   const closeDialog = useCallback(
     (force = false) => {
       if (!force && (isSubmitting || isDeleting)) {
@@ -110,14 +136,10 @@ export function ApplicationTracker() {
 
       setIsDeleteAlertOpen(false);
       setDialogState(null);
+      clearCreateDialogParam();
     },
-    [isDeleting, isSubmitting]
+    [clearCreateDialogParam, isDeleting, isSubmitting]
   );
-
-  const openCreateDialog = useCallback(() => {
-    setIsDeleteAlertOpen(false);
-    setDialogState({ mode: "create" });
-  }, []);
 
   const openEditDialog = useCallback((application: ApplicationListItem) => {
     setIsDeleteAlertOpen(false);
@@ -314,53 +336,59 @@ export function ApplicationTracker() {
 
   return (
     <>
-      <section className="w-full">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Applications ({totalApplications})
-            </h2>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <Button onClick={openCreateDialog} type="button">
-              <IconPlus aria-hidden="true" className="size-4" />
-              Add application
-            </Button>
-            <ToggleGroup
-              aria-label="Application view"
-              onValueChange={(nextView) => {
-                if (nextView) {
-                  setViewMode(nextView);
-                }
-              }}
-              value={viewMode}
-            >
-              <ToggleGroupItem
-                aria-label="Show applications as a kanban board"
-                title="Kanban view"
-                value="kanban"
+      <section className="flex h-full min-h-0 w-full flex-col">
+        <div className="sticky top-0 z-10 w-full border-b border-border/40 backdrop-blur-xl backdrop-saturate-150 dark:bg-card/50">
+          <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5">
+            <div>
+              <h2>
+                Applications ({totalApplications})
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <ToggleGroup
+                aria-label="Application view"
+                onValueChange={(nextView) => {
+                  if (nextView) {
+                    setViewMode(nextView);
+                  }
+                }}
+                size="sm"
+                value={viewMode}
               >
-                <IconLayoutKanban aria-hidden="true" className="size-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                aria-label="Show applications as a list"
-                title="List view"
-                value="list"
-              >
-                <IconListDetails aria-hidden="true" className="size-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
+                <ToggleGroupItem
+                  aria-label="Show applications as a kanban board"
+                  title="Kanban view"
+                  value="kanban"
+                >
+                  <IconLayoutKanban aria-hidden="true" className="size-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  aria-label="Show applications as a list"
+                  title="List view"
+                  value="list"
+                >
+                  <IconListDetails aria-hidden="true" className="size-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
         </div>
 
-        <ApplicationsList
-          groups={applicationGroups}
-          isLoading={isLoading}
-          onEdit={openEditDialog}
-          onMoveToStatus={handleMoveToStatus}
-          movingApplicationId={movingApplicationId}
-          viewMode={viewMode}
-        />
+        <div
+          className={`px-4 pt-4 sm:px-5 ${viewMode === "kanban"
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+              : "min-h-0 flex-1 overflow-y-auto"
+            }`}
+        >
+          <ApplicationsList
+            groups={applicationGroups}
+            isLoading={isLoading}
+            onEdit={openEditDialog}
+            onMoveToStatus={handleMoveToStatus}
+            movingApplicationId={movingApplicationId}
+            viewMode={viewMode}
+          />
+        </div>
       </section>
 
       <ApplicationDeleteAlert

@@ -10,11 +10,11 @@ const meta: Meta<typeof Button> = {
   argTypes: {
     variant: {
       control: "inline-radio",
-      options: ["primary", "secondary"],
+      options: ["primary", "secondary", "ghost"],
     },
     size: {
       control: "inline-radio",
-      options: ["default", "sm", "lg"],
+      options: ["xs", "default", "sm", "lg"],
     },
   },
 };
@@ -35,11 +35,24 @@ export const Secondary: Story = {
   },
 };
 
+export const Ghost: Story = {
+  args: {
+    variant: "ghost",
+  },
+};
+
+export const ExtraSmall: Story = {
+  args: {
+    size: "xs",
+  },
+};
+
 export const Variants: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
       <Button variant="primary">Primary</Button>
       <Button variant="secondary">Secondary</Button>
+      <Button variant="ghost">Ghost</Button>
     </div>
   ),
 };
@@ -47,6 +60,7 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
+      <Button size="xs">Extra small</Button>
       <Button size="sm">Small</Button>
       <Button size="default">Default</Button>
       <Button size="lg">Large</Button>

@@ -7,6 +7,7 @@ import {
 } from "@jobnest/ui";
 import {
   DndContext,
+  DragOverlay,
   type DragCancelEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -15,14 +16,15 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ApplicationStatusGroup } from "../../lib/api/applications";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import {
-  formatStatusLabel,
   STATUS_OPTIONS,
   type ApplicationStatus,
 } from "../../lib/status";
-import { ApplicationCard } from "./application-card";
+import { ApplicationCard, ApplicationCardDragPreview } from "./application-card";
+import { ApplicationStatusBadge } from "./application-status-badge";
 import { KanbanColumn } from "./kanban-column";
 import { trackerPanelClass } from "./styles";
 
@@ -90,8 +92,18 @@ export function ApplicationsList({
   const [kanbanGroups, setKanbanGroups] = useState<KanbanGroup[]>(() =>
     buildKanbanGroups(groups)
   );
+  const [dragPreviewApplication, setDragPreviewApplication] =
+    useState<ApplicationListItem | null>(null);
+  const [dragPreviewWidth, setDragPreviewWidth] =
+    useState<number | undefined>(undefined);
+  const [dragOverlayContainer, setDragOverlayContainer] =
+    useState<HTMLElement | null>(null);
   const kanbanGroupsRef = useRef<KanbanGroup[]>(kanbanGroups);
   const previousKanbanGroupsRef = useRef<KanbanGroup[] | null>(null);
+
+  useEffect(() => {
+    setDragOverlayContainer(document.body);
+  }, []);
 
   useEffect(() => {
     const nextGroups = buildKanbanGroups(groups);
@@ -129,8 +141,12 @@ export function ApplicationsList({
     );
   }
 
-  const handleDragStart = (_event: DragStartEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
     previousKanbanGroupsRef.current = kanbanGroupsRef.current;
+    setDragPreviewApplication(
+      applicationsById.get(event.active.id as string) ?? null
+    );
+    setDragPreviewWidth(event.active.rect.current.initial?.width);
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
@@ -138,6 +154,8 @@ export function ApplicationsList({
       setTrackedKanbanGroups(previousKanbanGroupsRef.current);
       previousKanbanGroupsRef.current = null;
     }
+    setDragPreviewApplication(null);
+    setDragPreviewWidth(undefined);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -223,6 +241,8 @@ export function ApplicationsList({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const applicationId = active.id as string;
+    setDragPreviewApplication(null);
+    setDragPreviewWidth(undefined);
 
     if (!over || movingApplicationId) {
       previousKanbanGroupsRef.current = null;
@@ -278,6 +298,23 @@ export function ApplicationsList({
   };
 
   if (viewMode === "kanban") {
+    const dragOverlay = (
+      <DragOverlay>
+        {dragPreviewApplication ? (
+          <div
+            style={{
+              width: dragPreviewWidth,
+            }}
+          >
+            <ApplicationCardDragPreview
+              application={dragPreviewApplication}
+              onEdit={onEdit}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    );
+
     return (
       <DndContext
         collisionDetection={closestCenter}
@@ -286,23 +323,24 @@ export function ApplicationsList({
         onDragOver={handleDragOver}
         onDragStart={handleDragStart}
       >
-        <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2">
-          <div className="overflow-x-auto pb-2">
-            <div className="mx-auto w-full max-w-6xl px-6">
-              <div className="grid min-w-max grid-flow-col gap-4 auto-cols-[16rem] items-start">
-                {kanbanGroups.map((group) => (
-                  <KanbanColumn
-                    key={group.status}
-                    status={group.status}
-                    applications={group.applications}
-                    movingApplicationId={movingApplicationId}
-                    onEdit={onEdit}
-                  />
-                ))}
-              </div>
+        <div className="-mx-4 min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-4 sm:-mx-5">
+          <div className="h-full min-h-0 px-4 sm:px-5">
+            <div className="grid h-full min-w-max auto-cols-[16rem] grid-flow-col gap-4">
+              {kanbanGroups.map((group) => (
+                <KanbanColumn
+                  key={group.status}
+                  status={group.status}
+                  applications={group.applications}
+                  movingApplicationId={movingApplicationId}
+                  onEdit={onEdit}
+                />
+              ))}
             </div>
           </div>
         </div>
+        {dragOverlayContainer
+          ? createPortal(dragOverlay, dragOverlayContainer)
+          : dragOverlay}
       </DndContext>
     );
   }
@@ -317,9 +355,7 @@ export function ApplicationsList({
         >
           <CollapsibleTriggerButton className="hover:bg-muted/40">
             <span className="flex min-w-0 items-center gap-3">
-              <span className="text-sm font-semibold">
-                {formatStatusLabel(group.status)}
-              </span>
+              <ApplicationStatusBadge status={group.status} />
               <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                 {group.applications.length}
               </span>
