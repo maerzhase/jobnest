@@ -23,6 +23,11 @@ const APPLICATION_STATUS_APPLIED: &str = "applied";
 const APPLICATION_STATUS_INTERVIEW: &str = "interview";
 const APPLICATION_STATUS_OFFER: &str = "offer";
 const APPLICATION_STATUS_REJECTED: &str = "rejected";
+const APPLICATION_SOURCE_DIRECT: &str = "direct_application";
+const APPLICATION_SOURCE_EXTERNAL_RECRUITER: &str = "external_recruiter";
+const APPLICATION_SOURCE_INTERNAL_RECRUITER: &str = "internal_recruiter";
+const APPLICATION_SOURCE_REFERRAL: &str = "referral";
+const APPLICATION_SOURCE_OTHER: &str = "other";
 const ENTITY_COMPANY: &str = "company";
 const ENTITY_CONTACT: &str = "contact";
 const ENTITY_NOTE: &str = "note";
@@ -50,6 +55,8 @@ pub enum AppError {
     InvalidSearchQuery,
     #[error("invalid application status: {0}")]
     InvalidApplicationStatus(String),
+    #[error("invalid application source: {0}")]
+    InvalidApplicationSource(String),
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +150,7 @@ impl Database {
             title: input.title.trim().to_owned(),
             job_board: trim_to_option(input.job_board),
             source_url: trim_to_option(input.source_url),
+            application_source: normalize_application_source(input.application_source.as_deref())?,
             employment_type: trim_to_option(input.employment_type),
             location_text: trim_to_option(input.location_text),
             salary_text: trim_to_option(input.salary_text),
@@ -154,10 +162,10 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO roles (
-                id, company_id, title, job_board, source_url, employment_type,
-                location_text, salary_text, description, created_at, updated_at
+                id, company_id, title, job_board, source_url, application_source,
+                employment_type, location_text, salary_text, description, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&role.id)
@@ -165,6 +173,7 @@ impl Database {
         .bind(&role.title)
         .bind(&role.job_board)
         .bind(&role.source_url)
+        .bind(&role.application_source)
         .bind(&role.employment_type)
         .bind(&role.location_text)
         .bind(&role.salary_text)
@@ -266,6 +275,7 @@ impl Database {
                 title: input.role_title,
                 job_board: None,
                 source_url: Some(input.job_post_url),
+                application_source: input.application_source,
                 employment_type: None,
                 location_text: None,
                 salary_text: None,
@@ -413,9 +423,12 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("UPDATE roles SET title = ?, source_url = ?, updated_at = ? WHERE id = ?")
+        sqlx::query(
+            "UPDATE roles SET title = ?, source_url = ?, application_source = ?, updated_at = ? WHERE id = ?",
+        )
             .bind(input.role_title.trim())
             .bind(trim_to_option(Some(input.job_post_url)))
+            .bind(normalize_application_source(Some(&input.application_source))?)
             .bind(&now)
             .bind(current.get::<String, _>("role_id"))
             .execute(&self.pool)
@@ -777,6 +790,7 @@ impl Database {
                 c.name AS company_name,
                 r.title AS role_title,
                 r.source_url AS job_post_url,
+                r.application_source,
                 a.salary_expectation,
                 a.salary_offer,
                 a.status,
@@ -931,7 +945,7 @@ impl Database {
             .collect();
 
         let role_rows = sqlx::query(
-            "SELECT id, company_id, title, job_board, source_url, employment_type, location_text, salary_text, description, created_at, updated_at FROM roles"
+            "SELECT id, company_id, title, job_board, source_url, application_source, employment_type, location_text, salary_text, description, created_at, updated_at FROM roles"
         )
         .fetch_all(&self.pool)
         .await?;
@@ -944,6 +958,7 @@ impl Database {
                 title: row.get("title"),
                 job_board: row.get("job_board"),
                 source_url: row.get("source_url"),
+                application_source: row.get("application_source"),
                 employment_type: row.get("employment_type"),
                 location_text: row.get("location_text"),
                 salary_text: row.get("salary_text"),
@@ -1134,13 +1149,14 @@ impl Database {
         // Insert roles
         for role in &data.roles {
             sqlx::query(
-                "INSERT INTO roles (id, company_id, title, job_board, source_url, employment_type, location_text, salary_text, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO roles (id, company_id, title, job_board, source_url, application_source, employment_type, location_text, salary_text, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             )
             .bind(&role.id)
             .bind(&role.company_id)
             .bind(&role.title)
             .bind(&role.job_board)
             .bind(&role.source_url)
+            .bind(&role.application_source)
             .bind(&role.employment_type)
             .bind(&role.location_text)
             .bind(&role.salary_text)
@@ -1328,6 +1344,7 @@ impl Database {
                 r.title,
                 r.job_board,
                 r.source_url,
+                r.application_source,
                 r.employment_type,
                 r.location_text,
                 r.salary_text,
@@ -1356,10 +1373,12 @@ impl Database {
                 row.get::<Option<String>, _>("salary_text"),
                 row.get::<Option<String>, _>("description"),
                 row.get::<Option<String>, _>("source_url"),
+                Some(row.get::<String, _>("application_source")),
             ]),
             keywords: join_parts([
                 Some(company_name),
                 row.get::<Option<String>, _>("job_board"),
+                Some(row.get::<String, _>("application_source")),
                 row.get::<Option<String>, _>("employment_type"),
             ]),
             updated_at: row.get("updated_at"),
@@ -1382,6 +1401,7 @@ impl Database {
                 a.updated_at,
                 r.title AS role_title,
                 r.source_url,
+                r.application_source,
                 c.name AS company_name
             FROM applications a
             INNER JOIN roles r ON r.id = a.role_id
@@ -1417,10 +1437,16 @@ impl Database {
                 row.get::<Option<String>, _>("deadline_at"),
                 row.get::<Option<String>, _>("salary_expectation"),
                 row.get::<Option<String>, _>("salary_offer"),
+                Some(row.get::<String, _>("application_source")),
                 Some(format!("Priority {}", row.get::<i64, _>("priority"))),
                 Some(notes_summary),
             ]),
-            keywords: join_parts([Some(role_title), Some(company_name), Some(status)]),
+            keywords: join_parts([
+                Some(role_title),
+                Some(company_name),
+                Some(status),
+                Some(row.get::<String, _>("application_source")),
+            ]),
             updated_at: row.get("updated_at"),
         };
 
@@ -1609,6 +1635,7 @@ impl Database {
                 c.name AS company_name,
                 r.title AS role_title,
                 r.source_url AS job_post_url,
+                r.application_source,
                 a.salary_expectation,
                 a.salary_offer,
                 a.status,
@@ -1643,6 +1670,7 @@ fn map_application_list_item(row: &sqlx::sqlite::SqliteRow) -> ApplicationListIt
         company_name: row.get("company_name"),
         role_title: row.get("role_title"),
         job_post_url: row.get("job_post_url"),
+        application_source: row.get("application_source"),
         salary_expectation: row.get("salary_expectation"),
         salary_offer: row.get("salary_offer"),
         status: row.get("status"),
@@ -1693,6 +1721,25 @@ fn normalize_application_status(input: &str) -> AppResult<String> {
         | APPLICATION_STATUS_OFFER
         | APPLICATION_STATUS_REJECTED => Ok(normalized),
         _ => Err(AppError::InvalidApplicationStatus(input.trim().to_owned())),
+    }
+}
+
+fn normalize_application_source(input: Option<&str>) -> AppResult<String> {
+    let normalized = input
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(APPLICATION_SOURCE_DIRECT)
+        .to_ascii_lowercase();
+
+    match normalized.as_str() {
+        APPLICATION_SOURCE_DIRECT
+        | APPLICATION_SOURCE_EXTERNAL_RECRUITER
+        | APPLICATION_SOURCE_INTERNAL_RECRUITER
+        | APPLICATION_SOURCE_REFERRAL
+        | APPLICATION_SOURCE_OTHER => Ok(normalized),
+        _ => Err(AppError::InvalidApplicationSource(
+            input.unwrap_or_default().trim().to_owned(),
+        )),
     }
 }
 
@@ -1776,6 +1823,7 @@ mod tests {
                 title: "Frontend Engineer".to_owned(),
                 job_board: Some("LinkedIn".to_owned()),
                 source_url: None,
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
                 employment_type: Some("Full-time".to_owned()),
                 location_text: Some("Remote".to_owned()),
                 salary_text: None,
@@ -1879,6 +1927,7 @@ mod tests {
                 job_post_url: "https://jobs.example.com/product-designer".to_owned(),
                 company_name: "Acme".to_owned(),
                 role_title: "Product Designer".to_owned(),
+                application_source: Some(APPLICATION_SOURCE_REFERRAL.to_owned()),
                 salary_expectation: Some("EUR 60k".to_owned()),
                 salary_offer: None,
                 status: Some(APPLICATION_STATUS_SAVED.to_owned()),
@@ -1897,6 +1946,7 @@ mod tests {
             Some("https://jobs.example.com/product-designer")
         );
         assert_eq!(saved.salary_expectation.as_deref(), Some("EUR 60k"));
+        assert_eq!(saved.application_source, APPLICATION_SOURCE_REFERRAL);
         assert_eq!(saved.notes.as_deref(), Some("Strong portfolio match."));
 
         let applied = db
@@ -1947,6 +1997,7 @@ mod tests {
             job_post_url: "https://jobs.example.com/frontend".to_owned(),
             company_name: "Acme".to_owned(),
             role_title: "Frontend Engineer".to_owned(),
+            application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
             salary_expectation: None,
             salary_offer: None,
             status: Some(APPLICATION_STATUS_APPLIED.to_owned()),
@@ -1961,6 +2012,7 @@ mod tests {
             job_post_url: "https://jobs.example.com/platform".to_owned(),
             company_name: "Orbit".to_owned(),
             role_title: "Platform Engineer".to_owned(),
+            application_source: Some(APPLICATION_SOURCE_EXTERNAL_RECRUITER.to_owned()),
             salary_expectation: None,
             salary_offer: None,
             status: Some(APPLICATION_STATUS_SAVED.to_owned()),
@@ -1975,6 +2027,7 @@ mod tests {
             job_post_url: "https://jobs.example.com/design".to_owned(),
             company_name: "North".to_owned(),
             role_title: "Product Designer".to_owned(),
+            application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
             salary_expectation: None,
             salary_offer: None,
             status: Some(APPLICATION_STATUS_APPLIED.to_owned()),
@@ -2009,6 +2062,7 @@ mod tests {
                 job_post_url: "https://jobs.example.com/designer".to_owned(),
                 company_name: "Acme".to_owned(),
                 role_title: "Designer".to_owned(),
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
                 salary_expectation: Some("EUR 60k".to_owned()),
                 salary_offer: None,
                 status: Some(APPLICATION_STATUS_SAVED.to_owned()),
@@ -2025,6 +2079,7 @@ mod tests {
                 job_post_url: "https://jobs.example.com/senior-designer".to_owned(),
                 company_name: "Acme Labs".to_owned(),
                 role_title: "Senior Designer".to_owned(),
+                application_source: APPLICATION_SOURCE_INTERNAL_RECRUITER.to_owned(),
                 salary_expectation: Some("USD 80k".to_owned()),
                 salary_offer: Some("USD 90k".to_owned()),
                 status: APPLICATION_STATUS_INTERVIEW.to_owned(),
@@ -2041,6 +2096,10 @@ mod tests {
         );
         assert_eq!(updated.salary_expectation.as_deref(), Some("USD 80k"));
         assert_eq!(updated.salary_offer.as_deref(), Some("USD 90k"));
+        assert_eq!(
+            updated.application_source,
+            APPLICATION_SOURCE_INTERNAL_RECRUITER
+        );
         assert_eq!(updated.status, APPLICATION_STATUS_INTERVIEW);
         assert_eq!(updated.notes.as_deref(), Some("Updated note"));
 
@@ -2098,6 +2157,7 @@ mod tests {
                 title: "Test Engineer".to_owned(),
                 job_board: Some("LinkedIn".to_owned()),
                 source_url: None,
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
                 employment_type: Some("Full-time".to_owned()),
                 location_text: Some("Remote".to_owned()),
                 salary_text: None,
@@ -2187,6 +2247,7 @@ mod tests {
                 title: "Developer".to_owned(),
                 job_board: None,
                 source_url: None,
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
                 employment_type: None,
                 location_text: None,
                 salary_text: None,
@@ -2335,6 +2396,7 @@ mod tests {
                 title: "Engineer".to_owned(),
                 job_board: None,
                 source_url: None,
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
                 employment_type: None,
                 location_text: None,
                 salary_text: None,
