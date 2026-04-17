@@ -409,9 +409,11 @@ impl Database {
 
         let now = now_utc();
         let next_status = normalize_application_status(&input.status)?;
-        let applied_at = current
-            .get::<Option<String>, _>("applied_at")
-            .or_else(|| should_set_applied_at(&next_status).then(|| now.clone()));
+        let applied_at = trim_to_option(input.applied_at).or_else(|| {
+            current
+                .get::<Option<String>, _>("applied_at")
+                .or_else(|| should_set_applied_at(&next_status).then(|| now.clone()))
+        });
         let first_response_at = current
             .get::<Option<String>, _>("first_response_at")
             .or_else(|| should_set_first_response_at(&next_status).then(|| now.clone()));
@@ -2083,6 +2085,7 @@ mod tests {
                 salary_expectation: Some("USD 80k".to_owned()),
                 salary_offer: Some("USD 90k".to_owned()),
                 status: APPLICATION_STATUS_INTERVIEW.to_owned(),
+                applied_at: Some("2026-04-10T00:00:00Z".to_owned()),
                 notes: Some("Updated note".to_owned()),
             })
             .await
@@ -2101,6 +2104,7 @@ mod tests {
             APPLICATION_SOURCE_INTERNAL_RECRUITER
         );
         assert_eq!(updated.status, APPLICATION_STATUS_INTERVIEW);
+        assert_eq!(updated.applied_at.as_deref(), Some("2026-04-10T00:00:00Z"));
         assert_eq!(updated.notes.as_deref(), Some("Updated note"));
 
         db.delete_tracked_application(&saved.id)

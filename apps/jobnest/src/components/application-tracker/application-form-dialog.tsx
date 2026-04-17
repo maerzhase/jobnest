@@ -19,7 +19,7 @@ import {
   cn,
 } from "@jobnest/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -52,6 +52,7 @@ const createApplicationSchema = z.object({
   salaryOffer: z.string(),
   salaryOfferCurrency: z.string().trim().min(1, "Choose a currency"),
   status: z.enum(statusValues),
+  appliedAt: z.string(),
   notes: z.string(),
 });
 
@@ -89,6 +90,12 @@ export function ApplicationFormDialog({
     defaultValues: initialValues,
     resolver: zodResolver(createApplicationSchema),
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      reset(initialValues);
+    }
+  }, [initialValues, isOpen, reset]);
 
   const selectedStatus = watch("status");
   const selectedApplicationSource = watch("applicationSource");
@@ -216,6 +223,18 @@ export function ApplicationFormDialog({
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              error={errors.appliedAt?.message}
+              label="Application date"
+              name="appliedAt"
+            >
+              <Input
+                invalid={Boolean(errors.appliedAt)}
+                type="date"
+                {...register("appliedAt")}
+              />
+            </Field>
+
             <Field
               error={
                 errors.salaryExpectation?.message ??
