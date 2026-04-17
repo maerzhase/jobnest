@@ -114,11 +114,19 @@ export interface SelectItemProps
 export function SelectItem({
   children,
   className,
+  label,
   ...props
 }: SelectItemProps): JSX.Element {
+  const resolvedLabel =
+    label ??
+    (typeof children === "string" || typeof children === "number"
+      ? String(children)
+      : undefined);
+
   return (
     <BaseSelect.Item
       {...props}
+      label={resolvedLabel}
       className={cn(
         "grid min-h-10 w-full cursor-default grid-cols-[1rem_minmax(0,1fr)] items-center gap-3 rounded-sm px-3 py-2 text-sm text-foreground outline-none select-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[selected]:bg-muted/70 data-[selected]:font-medium data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,

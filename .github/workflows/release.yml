@@ -135,10 +135,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Inject updater config
+        env:
+          JOBNEST_UPDATER_PUBLIC_KEY: ${{ secrets.JOBNEST_UPDATER_PUBLIC_KEY }}
+        run: |
+          if [ -z "$JOBNEST_UPDATER_PUBLIC_KEY" ]; then
+            echo "JOBNEST_UPDATER_PUBLIC_KEY is not set; continuing without updater config."
+            exit 0
+          fi
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'apps/jobnest/src-tauri/tauri.conf.json';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+          config.bundle ??= {};
+          config.bundle.createUpdaterArtifacts = true;
+          config.plugins ??= {};
+          config.plugins.updater = {
+            pubkey: process.env.JOBNEST_UPDATER_PUBLIC_KEY,
+            endpoints: [
+              'https://github.com/maerzhase/jobnest/releases/latest/download/latest.json',
+            ],
+          };
+
+          fs.writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+          NODE
+
       - name: Build and upload jobnest release bundle
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/jobnest
           tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.jobnest_tag || needs.release.outputs.jobnest_tag }}

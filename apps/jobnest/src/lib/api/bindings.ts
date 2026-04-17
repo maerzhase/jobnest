@@ -28,6 +28,12 @@ export const commands = {
 	resetAppData: () => __TAURI_INVOKE<AppSettings>("reset_app_data"),
 	exportAppData: () => __TAURI_INVOKE<ExportData>("export_app_data"),
 	importAppData: (input: ImportDataInput) => __TAURI_INVOKE<ExportData>("import_app_data", { input }),
+	checkForAvailableUpdate: () => __TAURI_INVOKE<{
+	version: string,
+	current_version: string,
+	body: string | null,
+} | null>("check_for_available_update"),
+	runInteractiveUpdateCheck: () => __TAURI_INVOKE<null>("run_interactive_update_check"),
 };
 
 /* Types */
@@ -57,6 +63,7 @@ export type ApplicationListItem = {
 	companyName: string,
 	roleTitle: string,
 	jobPostUrl: string | null,
+	applicationSource: string,
 	salaryExpectation: string | null,
 	salaryOffer: string | null,
 	status: string,
@@ -80,6 +87,12 @@ export type Attachment = {
 	filePath: string,
 	mimeType: string | null,
 	createdAt: string,
+};
+
+export type AvailableUpdate = {
+	version: string,
+	current_version: string,
+	body: string | null,
 };
 
 export type Company = {
@@ -142,6 +155,7 @@ export type CreateRoleInput = {
 	title: string,
 	jobBoard: string | null,
 	sourceUrl: string | null,
+	applicationSource: string | null,
 	employmentType: string | null,
 	locationText: string | null,
 	salaryText: string | null,
@@ -152,6 +166,7 @@ export type CreateTrackedApplicationInput = {
 	jobPostUrl: string,
 	companyName: string,
 	roleTitle: string,
+	applicationSource: string | null,
 	salaryExpectation: string | null,
 	salaryOffer: string | null,
 	status: string | null,
@@ -201,6 +216,7 @@ export type Role = {
 	title: string,
 	jobBoard: string | null,
 	sourceUrl: string | null,
+	applicationSource: string,
 	employmentType: string | null,
 	locationText: string | null,
 	salaryText: string | null,
@@ -259,6 +275,7 @@ export type UpdateTrackedApplicationInput = {
 	jobPostUrl: string,
 	companyName: string,
 	roleTitle: string,
+	applicationSource: string,
 	salaryExpectation: string | null,
 	salaryOffer: string | null,
 	status: string,
