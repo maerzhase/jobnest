@@ -1,5 +1,34 @@
 # jobnest
 
+## 0.0.2
+
+### Patch Changes
+
+- dd2ff1f: Add native in-app update support with a `Check for Updates…` menu action.
+
+  - Wire the Tauri updater plugin into the desktop shell.
+  - Show native dialogs for update availability, install confirmation, and restart prompts.
+  - Prepare release builds to publish signed updater artifacts for in-app installs.
+
+- c8e259e: - Fix keyboard shortcuts (issue #16)
+- 39dcd1c: Feature: add application source to the tracked application form and show select labels correctly
+
+  - Add the "How this role came in" field to the tracked application form.
+  - Fix shared select rendering so closed triggers show the selected item label instead of the stored value.
+  - Derive form enum validation from shared option lists to reduce duplication and drift risk.
+
+- f78e985: Feat: Improve kanban layout by having columns scroll individually
+- 3fcbab8: Fix: List view scrolling
+- 566f9a1: Fix: Drag + Drop ghost position
+- 168371c: Feature: Improve two col layout with aside and content
+- 6a45e53: Fix: Mark post url as required in form
+- f1936c0: Feature: Add draggable card handle \n Feature: Update status badge layout on cards and columns \n: Fix make cards clickable on kanban (fix #8)
+- Updated dependencies [39dcd1c]
+- Updated dependencies [168371c]
+- Updated dependencies [e3175a2]
+- Updated dependencies [9151ea5]
+  - @jobnest/ui@0.0.2
+
 ## 0.0.1
 
 ### Patch Changes
