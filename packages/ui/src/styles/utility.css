@@ -1,1 +1,5 @@
 @custom-variant dark (&:where(.dark, .dark *));
+
+@utility bg-page {
+  background: var(--page-background);
+}

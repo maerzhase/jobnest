@@ -22,19 +22,36 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+  APPLICATION_SOURCE_OPTIONS,
+  normalizeApplicationSource,
+} from "../../lib/application-source";
 import type { CreateApplicationValues } from "../../lib/form-mappers";
-import { STATUS_OPTIONS } from "../../lib/status";
+import { normalizeStatus, STATUS_OPTIONS } from "../../lib/status";
 import { SalaryInput } from "./salary-input";
+
+const applicationSourceValues = APPLICATION_SOURCE_OPTIONS.map(
+  (option) => option.value
+) as [
+  CreateApplicationValues["applicationSource"],
+  ...CreateApplicationValues["applicationSource"][],
+];
+
+const statusValues = STATUS_OPTIONS.map((option) => option.value) as [
+  CreateApplicationValues["status"],
+  ...CreateApplicationValues["status"][],
+];
 
 const createApplicationSchema = z.object({
   jobPostUrl: z.string().trim().url("Enter a valid job post URL"),
   companyName: z.string().trim().min(1, "Company is required"),
   roleTitle: z.string().trim().min(1, "Role title is required"),
+  applicationSource: z.enum(applicationSourceValues),
   salaryExpectation: z.string(),
   salaryExpectationCurrency: z.string().trim().min(1, "Choose a currency"),
   salaryOffer: z.string(),
   salaryOfferCurrency: z.string().trim().min(1, "Choose a currency"),
-  status: z.enum(["saved", "applied", "interview", "offer", "rejected"]),
+  status: z.enum(statusValues),
   notes: z.string(),
 });
 
@@ -74,6 +91,7 @@ export function ApplicationFormDialog({
   });
 
   const selectedStatus = watch("status");
+  const selectedApplicationSource = watch("applicationSource");
   const selectedSalaryExpectationCurrency = watch("salaryExpectationCurrency");
   const selectedSalaryOfferCurrency = watch("salaryOfferCurrency");
   const salaryExpectation = watch("salaryExpectation");
@@ -123,6 +141,7 @@ export function ApplicationFormDialog({
             error={errors.jobPostUrl?.message}
             label="Link to job post"
             name="jobPostUrl"
+            required
           >
             <Input
               autoComplete="url"
@@ -159,6 +178,41 @@ export function ApplicationFormDialog({
               placeholder="Product Designer"
               {...register("roleTitle")}
             />
+          </Field>
+
+          <Field
+            error={errors.applicationSource?.message}
+            label="How this role came in"
+            name="applicationSource"
+            required
+          >
+            <Select
+              name="applicationSource"
+              onValueChange={(value) => {
+                if (value) {
+                  setValue(
+                    "applicationSource",
+                    normalizeApplicationSource(value),
+                    {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    }
+                  );
+                }
+              }}
+              value={selectedApplicationSource}
+            >
+              <SelectTriggerButton invalid={Boolean(errors.applicationSource)}>
+                <SelectValueText placeholder="Select how this role came in" />
+              </SelectTriggerButton>
+              <SelectContent>
+                {APPLICATION_SOURCE_OPTIONS.map((source) => (
+                  <SelectItem key={source.value} value={source.value}>
+                    {source.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -235,7 +289,7 @@ export function ApplicationFormDialog({
               name="status"
               onValueChange={(value) => {
                 if (value) {
-                  setValue("status", value as CreateApplicationValues["status"], {
+                  setValue("status", normalizeStatus(value), {
                     shouldDirty: true,
                     shouldValidate: true,
                   });

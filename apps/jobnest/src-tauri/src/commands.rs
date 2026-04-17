@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::{
     db::Database,
@@ -8,7 +8,7 @@ use crate::{
         CreateRoleInput, CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
         UpdateAppSettingsInput, UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
     },
-    AppState,
+    AppState, AvailableUpdate,
 };
 
 #[tauri::command]
@@ -210,6 +210,18 @@ pub async fn import_app_data(
         .import(input)
         .await
         .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn check_for_available_update(app: AppHandle) -> Result<Option<AvailableUpdate>, String> {
+    crate::check_for_available_update_with_guard(app).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn run_interactive_update_check(app: AppHandle) -> Result<(), String> {
+    crate::run_interactive_update_check_with_guard(app).await
 }
 
 #[allow(dead_code)]

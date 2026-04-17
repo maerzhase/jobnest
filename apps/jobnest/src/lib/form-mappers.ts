@@ -2,6 +2,11 @@
  * Form data mappers - convert between application models and form values
  */
 import type { ApplicationListItem } from "./api/bindings";
+import {
+  DEFAULT_APPLICATION_SOURCE,
+  normalizeApplicationSource,
+  type ApplicationSource,
+} from "./application-source";
 import { parseSalaryValue } from "./salary";
 import { normalizeStatus, type ApplicationStatus } from "./status";
 
@@ -11,6 +16,7 @@ export type CreateApplicationValues = {
   jobPostUrl: string;
   companyName: string;
   roleTitle: string;
+  applicationSource: ApplicationSource;
   salaryExpectation: string;
   salaryExpectationCurrency: string;
   salaryOffer: string;
@@ -23,6 +29,7 @@ export const formDefaults: CreateApplicationValues = {
   jobPostUrl: "",
   companyName: "",
   roleTitle: "",
+  applicationSource: DEFAULT_APPLICATION_SOURCE,
   salaryExpectation: "",
   salaryExpectationCurrency: "EUR",
   salaryOffer: "",
@@ -58,6 +65,9 @@ export function mapApplicationToFormValues(
     jobPostUrl: application.jobPostUrl ?? "",
     companyName: application.companyName,
     roleTitle: application.roleTitle,
+    applicationSource: normalizeApplicationSource(
+      application.applicationSource
+    ),
     salaryExpectation: salaryExpectation.amount,
     salaryExpectationCurrency: salaryExpectation.currency,
     salaryOffer: salaryOffer.amount,

@@ -54,6 +54,19 @@ pnpm install
 
 ## Development
 
+### Environment Variables
+
+Copy the example file and create your local overrides in `apps/jobnest/.env.local`:
+
+```bash
+cp apps/jobnest/.env.example apps/jobnest/.env.local
+```
+
+Currently supported local env vars:
+
+- `NEXT_PUBLIC_JOBNEST_MOCK_UPDATE_NOTICE=true`
+  - Shows the sidebar update notice in development so you can preview the UI without publishing a real update.
+
 Run the frontend only:
 
 ```bash
@@ -109,6 +122,23 @@ For macOS releases, GitHub Actions must have Apple signing and notarization secr
 Without those secrets, the workflow now fails instead of uploading a bundle that Gatekeeper may flag as damaged.
 
 That means the canonical downloadable desktop builds live in GitHub Releases instead of only in CI artifacts.
+
+## In-App Updates
+
+JobNest now exposes a native `Check for Updates…` menu item:
+
+- macOS: `JobNest` -> `Check for Updates…`
+- Windows/Linux: `Help` -> `Check for Updates…`
+
+Release builds can now publish updater artifacts to GitHub Releases. To finish enabling that flow in CI, add these secrets:
+
+- `JOBNEST_UPDATER_PUBLIC_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+The release workflow injects the updater endpoint for:
+
+- `https://github.com/maerzhase/jobnest/releases/latest/download/latest.json`
 
 ## Important Files
 

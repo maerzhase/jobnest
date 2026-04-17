@@ -16,7 +16,6 @@ import {
   showWarningToast,
 } from "../../lib/toast";
 import { useSettings } from "../../hooks/use-settings";
-import { AppHeader } from "../app-header";
 import { AppearanceSettings } from "./appearance-settings";
 import { ApplicationsSettings } from "./applications-settings";
 import { DataManagement } from "./data-management";
@@ -153,27 +152,34 @@ export function SettingsScreen() {
 
   return (
     <>
-      <main className="app-window-content mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pb-10">
-        <div className="space-y-5">
-          <Button
-            className="w-fit gap-2"
-            onClick={() => router.push("/")}
-            type="button"
-            variant="secondary"
-          >
-            <span aria-hidden="true">←</span>
-            <span>Back</span>
-          </Button>
-          <AppHeader />
-        </div>
-
-        <section className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+      <main className="flex min-h-full flex-col px-6 py-6 sm:px-8 sm:py-8">
+        <section className="grid gap-8 xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-12">
           <SettingsSidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
           />
 
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Preferences
+                </p>
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                  Settings
+                </h2>
+              </div>
+              <Button
+                className="w-fit gap-2"
+                onClick={() => router.push("/")}
+                type="button"
+                variant="secondary"
+              >
+                <span aria-hidden="true">←</span>
+                <span>Applications</span>
+              </Button>
+            </div>
+
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
                 Loading settings...

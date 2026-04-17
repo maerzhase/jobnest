@@ -15,8 +15,15 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [],
+      "pubkey": ""
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "macOS": {
       "signingIdentity": "-"
