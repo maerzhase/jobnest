@@ -28,11 +28,13 @@ export function AppShell({ children }: AppShellProps) {
   const isDashboardPage = pathname.startsWith("/dashboard");
   const isApplicationsPage =
     !isSettingsPage && !isHistoryPage && !isDashboardPage;
-  const activeRoute: AppRoute = isDashboardPage
-    ? "dashboard"
-    : isHistoryPage
-      ? "history"
-      : "applications";
+  const activeRoute: AppRoute | null = isSettingsPage
+    ? null
+    : isDashboardPage
+      ? "dashboard"
+      : isHistoryPage
+        ? "history"
+        : "applications";
 
   const handleNavigationChange = (value: AppRoute) => {
     if (value === activeRoute) {
@@ -55,6 +57,11 @@ export function AppShell({ children }: AppShellProps) {
           <HistoryToolbar />
           <Button
             aria-current={isSettingsPage ? "page" : undefined}
+            className={
+              isSettingsPage
+                ? "border-border bg-card text-foreground shadow-sm hover:bg-card"
+                : undefined
+            }
             onClick={() => router.push("/settings")}
             type="button"
             variant="ghost"
