@@ -45,6 +45,7 @@ describe("applicationsApi", () => {
             appliedAt: null,
             firstResponseAt: null,
             notes: null,
+            attachments: [],
             updatedAt: "2026-04-14T00:00:00Z",
             archivedAt: null,
           },
@@ -70,6 +71,14 @@ describe("applicationsApi", () => {
       appliedAt: null,
       firstResponseAt: null,
       notes: "Interesting role",
+      attachments: [
+        {
+          kind: "file",
+          fileName: "resume.pdf",
+          filePath: "/Users/m3000/Documents/resume.pdf",
+          mimeType: "application/pdf",
+        },
+      ],
     };
 
     createTrackedApplicationMock.mockResolvedValue({
@@ -79,6 +88,7 @@ describe("applicationsApi", () => {
       salaryOffer: null,
       appliedAt: null,
       firstResponseAt: null,
+      attachments: input.attachments,
       updatedAt: "2026-04-14T00:00:00Z",
       archivedAt: null,
     });
@@ -100,6 +110,14 @@ describe("applicationsApi", () => {
       status: "interview",
       appliedAt: "2026-04-10T00:00:00Z",
       notes: "Recruiter call booked",
+      attachments: [
+        {
+          kind: "file",
+          fileName: "cover-letter.pdf",
+          filePath: "/Users/m3000/Documents/cover-letter.pdf",
+          mimeType: "application/pdf",
+        },
+      ],
     };
 
     updateTrackedApplicationMock.mockResolvedValue({
@@ -114,6 +132,7 @@ describe("applicationsApi", () => {
       appliedAt: input.appliedAt,
       firstResponseAt: null,
       notes: input.notes,
+      attachments: input.attachments,
       updatedAt: "2026-04-14T00:00:00Z",
       archivedAt: null,
     });

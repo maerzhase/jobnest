@@ -70,6 +70,7 @@ export type ApplicationListItem = {
 	appliedAt: string | null,
 	firstResponseAt: string | null,
 	notes: string | null,
+	attachments: Attachment[],
 	updatedAt: string,
 	archivedAt: string | null,
 };
@@ -87,6 +88,13 @@ export type Attachment = {
 	filePath: string,
 	mimeType: string | null,
 	createdAt: string,
+};
+
+export type AttachmentInput = {
+	kind: string | null,
+	fileName: string,
+	filePath: string,
+	mimeType: string | null,
 };
 
 export type AvailableUpdate = {
@@ -173,6 +181,7 @@ export type CreateTrackedApplicationInput = {
 	appliedAt: string | null,
 	firstResponseAt: string | null,
 	notes: string | null,
+	attachments: AttachmentInput[],
 };
 
 export type ExportData = {
@@ -281,5 +290,6 @@ export type UpdateTrackedApplicationInput = {
 	status: string,
 	appliedAt: string | null,
 	notes: string | null,
+	attachments: AttachmentInput[],
 };
 

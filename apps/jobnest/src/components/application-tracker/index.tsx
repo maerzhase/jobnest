@@ -197,6 +197,7 @@ function ApplicationTrackerContent() {
             status: values.status,
             appliedAt: fromDateInputValue(values.appliedAt),
             notes: values.notes || null,
+            attachments: values.attachments,
           });
 
           closeDialog();
@@ -225,6 +226,7 @@ function ApplicationTrackerContent() {
           appliedAt: fromDateInputValue(values.appliedAt),
           firstResponseAt: null,
           notes: values.notes || null,
+          attachments: values.attachments,
         });
 
         closeDialog();
@@ -339,6 +341,12 @@ function ApplicationTrackerContent() {
             formatSalaryValue(offer.amount, offer.currency) ?? null,
           appliedAt: application.appliedAt,
           notes: application.notes ?? null,
+          attachments: application.attachments.map((attachment) => ({
+            kind: attachment.kind,
+            fileName: attachment.fileName,
+            filePath: attachment.filePath,
+            mimeType: attachment.mimeType,
+          })),
         });
         refreshApplications();
       } catch (error) {
