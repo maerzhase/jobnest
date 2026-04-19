@@ -1,6 +1,12 @@
 "use client";
 
-import { IconHistory, IconLayoutKanban, IconPlus, IconSettings } from "@tabler/icons-react";
+import {
+  IconChartBar,
+  IconHistory,
+  IconLayoutKanban,
+  IconPlus,
+  IconSettings,
+} from "@tabler/icons-react";
 import { Button } from "@jobnest/ui";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -17,7 +23,8 @@ export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const isSettingsPage = pathname.startsWith("/settings");
   const isHistoryPage = pathname.startsWith("/history");
-  const isApplicationsPage = !isSettingsPage && !isHistoryPage;
+  const isDashboardPage = pathname.startsWith("/dashboard");
+  const isApplicationsPage = !isSettingsPage && !isHistoryPage && !isDashboardPage;
 
   return (
     <div className="grid h-screen grid-cols-[16rem_minmax(0,1fr)] gap-2 bg-page p-2">
@@ -69,6 +76,16 @@ export function AppShell({ children }: AppShellProps) {
           >
             <IconLayoutKanban aria-hidden="true" className="size-4" />
             Applications
+          </Button>
+          <Button
+            aria-current={isDashboardPage ? "page" : undefined}
+            className="justify-start"
+            onClick={() => router.push("/dashboard")}
+            type="button"
+            variant={isDashboardPage ? "secondary" : "ghost"}
+          >
+            <IconChartBar aria-hidden="true" className="size-4" />
+            Dashboard
           </Button>
           <Button
             aria-current={isHistoryPage ? "page" : undefined}
