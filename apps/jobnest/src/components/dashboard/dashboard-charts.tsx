@@ -4,6 +4,7 @@ import type {
   StatusMetric,
   WeeklyBucket,
 } from "./dashboard-metrics";
+import { DashboardInset } from "./dashboard-surface";
 
 export function TrendBarChart({ data }: { data: WeeklyBucket[] }) {
   const maxCount = Math.max(...data.map((item) => item.count), 1);
@@ -14,14 +15,14 @@ export function TrendBarChart({ data }: { data: WeeklyBucket[] }) {
         {data.map((item) => (
           <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={item.label}>
             <span className="text-[11px] text-muted-foreground">{item.count}</span>
-            <div className="relative flex h-40 w-full items-end overflow-hidden rounded-t-xl rounded-b-md bg-muted/35">
+            <DashboardInset className="relative flex h-40 w-full items-end overflow-hidden">
               <div
-                className="w-full rounded-t-xl bg-[linear-gradient(180deg,color-mix(in_srgb,var(--foreground)_18%,transparent),color-mix(in_srgb,var(--foreground)_70%,transparent))] transition-[height]"
+                className="w-full rounded-t-lg bg-[linear-gradient(180deg,color-mix(in_srgb,var(--foreground)_16%,transparent),color-mix(in_srgb,var(--foreground)_64%,transparent))] transition-[height]"
                 style={{
                   height: `${Math.max((item.count / maxCount) * 100, item.count > 0 ? 12 : 0)}%`,
                 }}
               />
-            </div>
+            </DashboardInset>
             <span className="text-[11px] text-muted-foreground">{item.label}</span>
           </div>
         ))}
@@ -38,14 +39,14 @@ export function SparkBarChart({ data }: { data: RecentActivityMetric[] }) {
       <div className="flex h-44 items-end gap-2">
         {data.map((item, index) => (
           <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={`${item.label}-${index}`}>
-            <div className="flex h-32 w-full items-end overflow-hidden rounded-lg bg-muted/30">
+            <DashboardInset className="flex h-32 w-full items-end overflow-hidden">
               <div
-                className="w-full rounded-lg bg-[linear-gradient(180deg,rgba(16,185,129,0.34),rgba(16,185,129,0.9))]"
+                className="w-full rounded-lg bg-[linear-gradient(180deg,rgba(34,197,94,0.24),rgba(34,197,94,0.76))]"
                 style={{
                   height: `${Math.max((item.count / maxCount) * 100, item.count > 0 ? 10 : 0)}%`,
                 }}
               />
-            </div>
+            </DashboardInset>
             <span className="text-[11px] text-muted-foreground">{item.label}</span>
           </div>
         ))}
@@ -61,17 +62,19 @@ export function StatusBreakdownChart({ data }: { data: StatusMetric[] }) {
       <div className="grid gap-2">
         {data.map((item) => (
           <div
-            className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/55 px-3 py-2"
+            className="flex items-center justify-between gap-3"
             key={item.status}
           >
-            <div className="flex items-center gap-2">
-              <StatusDot status={item.status} />
-              <ApplicationStatusBadge status={item.status} />
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-foreground">{item.count}</p>
-              <p className="text-xs text-muted-foreground">{item.share}%</p>
-            </div>
+            <DashboardInset className="flex w-full items-center justify-between gap-3 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <StatusDot status={item.status} />
+                <ApplicationStatusBadge status={item.status} />
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-foreground">{item.count}</p>
+                <p className="text-xs text-muted-foreground">{item.share}%</p>
+              </div>
+            </DashboardInset>
           </div>
         ))}
       </div>

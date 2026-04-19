@@ -9,6 +9,7 @@ import {
 import { MetricCell, Panel, StatPanel, SummaryPanel } from "./dashboard-panels";
 import { SparkBarChart, StatusBreakdownChart, TrendBarChart } from "./dashboard-charts";
 import type { DashboardMetrics } from "./dashboard-metrics";
+import { DashboardInset } from "./dashboard-surface";
 
 export function DashboardOverviewStats({ metrics }: { metrics: DashboardMetrics }) {
   return (
@@ -81,8 +82,8 @@ export function DashboardActivityPanels({ metrics }: { metrics: DashboardMetrics
       >
         <div className="grid gap-2">
           {metrics.sourceBreakdown.map((source) => (
-            <div
-              className="grid gap-3 rounded-xl border border-border/60 bg-background/55 px-3 py-3 md:grid-cols-[minmax(0,1fr)_7rem_7rem_7rem]"
+            <DashboardInset
+              className="grid gap-3 px-3 py-3 md:grid-cols-[minmax(0,1fr)_7rem_7rem_7rem]"
               key={source.source}
             >
               <div className="min-w-0">
@@ -94,7 +95,7 @@ export function DashboardActivityPanels({ metrics }: { metrics: DashboardMetrics
               <MetricCell label="Interviews" value={String(source.interviews)} />
               <MetricCell label="Offers" value={String(source.offers)} />
               <MetricCell label="Conv." value={`${source.conversionRate}%`} />
-            </div>
+            </DashboardInset>
           ))}
         </div>
       </Panel>
