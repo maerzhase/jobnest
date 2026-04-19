@@ -62,6 +62,7 @@ pub struct ApplicationListItem {
     pub applied_at: Option<String>,
     pub first_response_at: Option<String>,
     pub notes: Option<String>,
+    pub attachments: Vec<Attachment>,
     pub updated_at: String,
     pub archived_at: Option<String>,
 }
@@ -200,6 +201,7 @@ pub struct UpdateTrackedApplicationInput {
     pub status: String,
     pub applied_at: Option<String>,
     pub notes: Option<String>,
+    pub attachments: Vec<AttachmentInput>,
 }
 
 #[derive(Debug, Clone, Deserialize, Type)]
@@ -215,6 +217,16 @@ pub struct CreateTrackedApplicationInput {
     pub applied_at: Option<String>,
     pub first_response_at: Option<String>,
     pub notes: Option<String>,
+    pub attachments: Vec<AttachmentInput>,
+}
+
+#[derive(Debug, Clone, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachmentInput {
+    pub kind: Option<String>,
+    pub file_name: String,
+    pub file_path: String,
+    pub mime_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Type)]

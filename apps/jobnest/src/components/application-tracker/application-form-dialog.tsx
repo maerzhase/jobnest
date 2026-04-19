@@ -1,5 +1,7 @@
 "use client";
 
+import { open } from "@tauri-apps/plugin-dialog";
+import { openPath } from "@tauri-apps/plugin-opener";
 import {
   Button,
   Dialog,
@@ -19,6 +21,12 @@ import {
   cn,
 } from "@jobnest/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  IconExternalLink,
+  IconPaperclip,
+  IconPlus,
+  IconX,
+} from "@tabler/icons-react";
 import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -26,8 +34,10 @@ import {
   APPLICATION_SOURCE_OPTIONS,
   normalizeApplicationSource,
 } from "../../lib/application-source";
+import { getErrorMessage } from "../../lib/error-handler";
 import type { CreateApplicationValues } from "../../lib/form-mappers";
 import { normalizeStatus, STATUS_OPTIONS } from "../../lib/status";
+import { showErrorToast } from "../../lib/toast";
 import { SalaryInput } from "./salary-input";
 
 const applicationSourceValues = APPLICATION_SOURCE_OPTIONS.map(
@@ -54,6 +64,14 @@ const createApplicationSchema = z.object({
   status: z.enum(statusValues),
   appliedAt: z.string(),
   notes: z.string(),
+  attachments: z.array(
+    z.object({
+      kind: z.string().nullable(),
+      fileName: z.string().trim().min(1, "File name is required"),
+      filePath: z.string().trim().min(1, "File path is required"),
+      mimeType: z.string().nullable(),
+    })
+  ),
 });
 
 type ApplicationFormDialogProps = {
@@ -103,6 +121,76 @@ export function ApplicationFormDialog({
   const selectedSalaryOfferCurrency = watch("salaryOfferCurrency");
   const salaryExpectation = watch("salaryExpectation");
   const salaryOffer = watch("salaryOffer");
+  const attachments = watch("attachments");
+
+  const handleAddAttachments = useCallback(async () => {
+    try {
+      const selection = await open({
+        title: "Select attachments",
+        multiple: true,
+      });
+      const selectedPaths = Array.isArray(selection)
+        ? selection
+        : selection
+          ? [selection]
+          : [];
+
+      if (selectedPaths.length === 0) {
+        return;
+      }
+
+      const nextAttachments = [...attachments];
+
+      for (const filePath of selectedPaths) {
+        if (nextAttachments.some((attachment) => attachment.filePath === filePath)) {
+          continue;
+        }
+
+        const fileName = filePath.split(/[/\\\\]/).pop() || filePath;
+        nextAttachments.push({
+          kind: "file",
+          fileName,
+          filePath,
+          mimeType: null,
+        });
+      }
+
+      setValue("attachments", nextAttachments, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    } catch (error) {
+      showErrorToast({
+        title: "Could not add attachments",
+        description: getErrorMessage(error),
+      });
+    }
+  }, [attachments, setValue]);
+
+  const handleOpenAttachment = useCallback(async (filePath: string) => {
+    try {
+      await openPath(filePath);
+    } catch (error) {
+      showErrorToast({
+        title: "Could not open attachment",
+        description: getErrorMessage(error),
+      });
+    }
+  }, []);
+
+  const handleRemoveAttachment = useCallback(
+    (filePath: string) => {
+      setValue(
+        "attachments",
+        attachments.filter((attachment) => attachment.filePath !== filePath),
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        }
+      );
+    },
+    [attachments, setValue]
+  );
 
   const handleFormSubmit = useCallback(
     async (values: CreateApplicationValues) => {
@@ -367,6 +455,82 @@ export function ApplicationFormDialog({
                       placeholder="58000"
                     />
                   </Field>
+                </div>
+              </section>
+
+              <section className="grid gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Attachments
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Keep resumes, cover letters, or work samples linked to this application.
+                      </p>
+                    </div>
+                    <Button
+                      className="shrink-0"
+                      disabled={isSubmitting || isDeleting}
+                      onClick={() => void handleAddAttachments()}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      <IconPlus aria-hidden="true" className="size-4" />
+                      <span>Add files</span>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  {attachments.length > 0 ? (
+                    attachments.map((attachment) => (
+                      <div
+                        key={attachment.filePath}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-3"
+                      >
+                        <div className="flex min-w-0 items-start gap-3">
+                          <span className="mt-0.5 text-muted-foreground">
+                            <IconPaperclip aria-hidden="true" className="size-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {attachment.fileName}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {attachment.filePath}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => void handleOpenAttachment(attachment.filePath)}
+                            size="xs"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <IconExternalLink aria-hidden="true" className="size-4" />
+                            <span>Open</span>
+                          </Button>
+                          <Button
+                            aria-label={`Remove ${attachment.fileName}`}
+                            onClick={() => handleRemoveAttachment(attachment.filePath)}
+                            size="xs"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <IconX aria-hidden="true" className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-border/80 px-4 py-4 text-sm text-muted-foreground">
+                      No files attached yet.
+                    </div>
+                  )}
                 </div>
               </section>
 
