@@ -39,7 +39,7 @@
     "api:generate": "cargo run --manifest-path src-tauri/Cargo.toml --bin export-bindings",
     "build": "next build",
     "dev": "next dev",
-    "dev:tauri": "tauri dev",
+    "dev:tauri": "tauri dev --config src-tauri/tauri.dev.conf.json -- --bin jobnest_dev",
     "lint": "biome lint .",
     "prebuild": "pnpm api:generate",
     "predev": "pnpm api:generate",
