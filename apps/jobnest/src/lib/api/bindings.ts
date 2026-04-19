@@ -279,6 +279,7 @@ export type UpdateTrackedApplicationInput = {
 	salaryExpectation: string | null,
 	salaryOffer: string | null,
 	status: string,
+	appliedAt: string | null,
 	notes: string | null,
 };
 

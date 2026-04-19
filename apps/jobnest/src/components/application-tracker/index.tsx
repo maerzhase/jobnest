@@ -19,6 +19,7 @@ import {
   getFormDefaults,
   mapApplicationToFormValues,
 } from "../../lib/form-mappers";
+import { fromDateInputValue } from "../../lib/date";
 import { formatSalaryValue, parseSalaryValue } from "../../lib/salary";
 import type { ApplicationStatus } from "../../lib/status";
 import { showErrorToast, showSuccessToast } from "../../lib/toast";
@@ -180,6 +181,7 @@ export function ApplicationTracker() {
               values.salaryOfferCurrency || preferredCurrency
             ) ?? null,
             status: values.status,
+            appliedAt: fromDateInputValue(values.appliedAt),
             notes: values.notes || null,
           });
 
@@ -206,7 +208,7 @@ export function ApplicationTracker() {
             values.salaryOfferCurrency || preferredCurrency
           ) ?? null,
           status: values.status,
-          appliedAt: null,
+          appliedAt: fromDateInputValue(values.appliedAt),
           firstResponseAt: null,
           notes: values.notes || null,
         });
@@ -321,6 +323,7 @@ export function ApplicationTracker() {
           ) ?? null,
           salaryOffer:
             formatSalaryValue(offer.amount, offer.currency) ?? null,
+          appliedAt: application.appliedAt,
           notes: application.notes ?? null,
         });
         refreshApplications();
