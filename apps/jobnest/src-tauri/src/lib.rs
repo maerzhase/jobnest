@@ -287,7 +287,16 @@ pub(crate) fn app_storage_dir(
     #[cfg(debug_assertions)]
     {
         if let Some(folder_name) = app_data_dir.file_name() {
-            let dev_folder_name = format!("{}-dev", folder_name.to_string_lossy());
+            let folder_name = folder_name.to_string_lossy();
+            if folder_name.ends_with(".dev")
+                || folder_name.ends_with("-dev")
+                || folder_name.ends_with("_dev")
+            {
+                fs::create_dir_all(&app_data_dir)?;
+                return Ok(app_data_dir);
+            }
+
+            let dev_folder_name = format!("{folder_name}-dev");
             let dev_app_data_dir = app_data_dir.with_file_name(dev_folder_name);
             fs::create_dir_all(&dev_app_data_dir)?;
             return Ok(dev_app_data_dir);
@@ -296,6 +305,18 @@ pub(crate) fn app_storage_dir(
 
     fs::create_dir_all(&app_data_dir)?;
     Ok(app_data_dir)
+}
+
+fn app_display_name() -> &'static str {
+    #[cfg(debug_assertions)]
+    {
+        "jobnest_dev"
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        "jobnest"
+    }
 }
 
 fn typescript_bindings_path() -> PathBuf {
@@ -335,8 +356,9 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
 
     #[cfg(target_os = "macos")]
     let menu = {
-        let app_submenu = SubmenuBuilder::new(app, "JobNest")
-            .item(&PredefinedMenuItem::about(app, Some("JobNest"), None)?)
+        let app_name = app_display_name();
+        let app_submenu = SubmenuBuilder::new(app, app_name)
+            .item(&PredefinedMenuItem::about(app, Some(app_name), None)?)
             .separator()
             .item(&check_for_updates)
             .separator()
@@ -370,7 +392,7 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
 
 fn build_main_window(app: &tauri::App) -> tauri::Result<WebviewWindow> {
     let window_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
-        .title("jobnest")
+        .title(app_display_name())
         .inner_size(800.0, 600.0);
 
     #[cfg(target_os = "macos")]
