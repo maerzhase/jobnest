@@ -11,6 +11,10 @@ const meta: Meta<typeof Input> = {
     invalid: {
       control: "boolean",
     },
+    size: {
+      control: "select",
+      options: ["sm", "md", "lg"],
+    },
     disabled: {
       control: "boolean",
     },
@@ -44,5 +48,11 @@ export const Disabled: Story = {
   args: {
     defaultValue: "Archived application",
     disabled: true,
+  },
+};
+
+export const Small: Story = {
+  args: {
+    size: "sm",
   },
 };
