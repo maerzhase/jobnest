@@ -148,11 +148,16 @@ pub fn run() {
             commands::search,
             commands::reindex_search,
             commands::list_applications,
+            commands::list_application_history,
             commands::get_app_settings,
             commands::update_app_settings,
             commands::reset_app_data,
             commands::export_app_data,
             commands::import_app_data,
+            commands::export_backup,
+            commands::import_backup,
+            commands::get_attachment_migration_status,
+            commands::migrate_legacy_attachments,
             commands::check_for_available_update,
             commands::run_interactive_update_check
         ]);
@@ -212,6 +217,9 @@ pub fn run() {
             "open-settings" => {
                 let _ = navigate_main_window(app, "/settings");
             }
+            "open-history" => {
+                let _ = navigate_main_window(app, "/history");
+            }
             "open-home" => {
                 let _ = navigate_main_window(app, "/");
             }
@@ -247,11 +255,16 @@ pub fn export_typescript_bindings() -> Result<(), Box<dyn std::error::Error>> {
             commands::search,
             commands::reindex_search,
             commands::list_applications,
+            commands::list_application_history,
             commands::get_app_settings,
             commands::update_app_settings,
             commands::reset_app_data,
             commands::export_app_data,
             commands::import_app_data,
+            commands::export_backup,
+            commands::import_backup,
+            commands::get_attachment_migration_status,
+            commands::migrate_legacy_attachments,
             commands::check_for_available_update,
             commands::run_interactive_update_check
         ])
@@ -272,6 +285,7 @@ fn typescript_bindings_path() -> PathBuf {
 
 fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
     let open_home = MenuItemBuilder::with_id("open-home", "Applications").build(app)?;
+    let open_history = MenuItemBuilder::with_id("open-history", "History").build(app)?;
     let open_settings = MenuItemBuilder::with_id("open-settings", "Settings…").build(app)?;
     let check_for_updates =
         MenuItemBuilder::with_id("check-for-updates", "Check for Updates…").build(app)?;
@@ -285,7 +299,7 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
     let select_all = PredefinedMenuItem::select_all(app, None)?;
 
     let view_submenu = SubmenuBuilder::new(app, "View")
-        .items(&[&open_home, &open_settings, &separator])
+        .items(&[&open_home, &open_history, &open_settings, &separator])
         .build()?;
 
     let edit_submenu = SubmenuBuilder::new(app, "Edit")

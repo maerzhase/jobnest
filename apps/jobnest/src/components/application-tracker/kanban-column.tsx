@@ -14,6 +14,8 @@ type KanbanColumnProps = {
   applications: ApplicationListItem[];
   movingApplicationId: string | null;
   onEdit: (application: ApplicationListItem) => void;
+  searchMatchesById: Map<string, boolean>;
+  searchQuery: string;
 };
 
 function KanbanColumnComponent({
@@ -21,6 +23,8 @@ function KanbanColumnComponent({
   applications,
   movingApplicationId,
   onEdit,
+  searchMatchesById,
+  searchQuery,
 }: KanbanColumnProps) {
   const itemIds = useMemo(() => applications.map((app) => app.id), [applications]);
   const { setNodeRef, isOver } = useDroppable({
@@ -58,7 +62,9 @@ function KanbanColumnComponent({
                 key={application.id}
                 application={application}
                 isDragging={movingApplicationId === application.id}
+                isSearchMatch={searchMatchesById.get(application.id) ?? true}
                 onEdit={onEdit}
+                searchQuery={searchQuery}
                 showDragHandle
                 showStatus={false}
               />

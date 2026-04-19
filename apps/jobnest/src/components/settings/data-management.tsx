@@ -1,47 +1,42 @@
 "use client";
 
 import { Button } from "@jobnest/ui";
-import { useRef } from "react";
 import { SettingsSection, SettingBlock } from "./settings-section";
 
 type DataManagementProps = {
   onExport: () => Promise<void>;
-  onImport: (file: File) => Promise<void>;
+  onImport: () => Promise<void>;
+  onMigrateAttachments: () => Promise<void>;
   onResetClick: () => void;
   isExporting: boolean;
   isImporting: boolean;
+  isMigratingAttachments: boolean;
+  legacyAttachmentCount: number;
 };
 
 export function DataManagement({
   onExport,
   onImport,
+  onMigrateAttachments,
   onResetClick,
   isExporting,
   isImporting,
+  isMigratingAttachments,
+  legacyAttachmentCount,
 }: DataManagementProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.currentTarget.files?.[0];
-    if (file) {
-      await onImport(file);
-      e.currentTarget.value = "";
-    }
-  };
-
   return (
     <SettingsSection
       category="Data"
       title="Manage your data"
-      description="Export your data as a backup or import from a previous backup."
+      description="Export a portable backup, restore from a backup, or migrate older linked files into managed storage."
     >
       <SettingBlock
         title="Export"
-        description="Download a complete backup of all your data as a JSON file."
+        description="Create a portable backup archive of your data and managed attachments."
       >
         <p className="max-w-xl text-sm leading-6 text-foreground">
-          Create a backup of all applications, companies, roles,
-          contacts, notes, and settings.
+          Save a complete backup archive with your applications, companies,
+          notes, settings, and any files already managed by JobNest.
         </p>
         <div>
           <Button
@@ -58,29 +53,43 @@ export function DataManagement({
       <div className="mt-8 border-t border-border pt-6">
         <SettingBlock
           title="Import"
-          description="Restore data from a previously exported backup file."
+          description="Restore data from a portable backup archive or an older JSON backup."
         >
           <p className="max-w-xl text-sm leading-6 text-foreground">
-            Select a JSON backup file to restore your data. This
-            will replace all current data.
+            Choose a backup file to restore your data. Importing replaces
+            your current local data.
           </p>
           <div>
-            <input
-              ref={fileInputRef}
-              accept=".json"
-              disabled={isImporting}
-              onChange={handleFileSelect}
-              style={{ display: "none" }}
-              type="file"
-              id="import-file-input"
-            />
             <Button
               disabled={isImporting}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => void onImport()}
               type="button"
               variant="secondary"
             >
               {isImporting ? "Importing..." : "Import data"}
+            </Button>
+          </div>
+        </SettingBlock>
+      </div>
+
+      <div className="mt-8 border-t border-border pt-6">
+        <SettingBlock
+          title="Attachment migration"
+          description="Bring older linked files into JobNest-managed storage."
+        >
+          <p className="max-w-xl text-sm leading-6 text-foreground">
+            {legacyAttachmentCount > 0
+              ? `${legacyAttachmentCount} attachment${legacyAttachmentCount === 1 ? "" : "s"} still point to external file paths and may not travel with backups.`
+              : "All current attachments are already managed by JobNest."}
+          </p>
+          <div>
+            <Button
+              disabled={isMigratingAttachments || legacyAttachmentCount === 0}
+              onClick={() => void onMigrateAttachments()}
+              type="button"
+              variant="secondary"
+            >
+              {isMigratingAttachments ? "Migrating..." : "Migrate attachments"}
             </Button>
           </div>
         </SettingBlock>

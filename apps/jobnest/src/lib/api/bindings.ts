@@ -23,11 +23,16 @@ export const commands = {
 } | null, limit: number | null, offset: number | null) => __TAURI_INVOKE<SearchResult[]>("search", { query, filters, limit, offset }),
 	reindexSearch: () => __TAURI_INVOKE<null>("reindex_search"),
 	listApplications: () => __TAURI_INVOKE<ApplicationStatusGroup[]>("list_applications"),
+	listApplicationHistory: () => __TAURI_INVOKE<ApplicationHistoryEvent[]>("list_application_history"),
 	getAppSettings: () => __TAURI_INVOKE<AppSettings>("get_app_settings"),
 	updateAppSettings: (input: UpdateAppSettingsInput) => __TAURI_INVOKE<AppSettings>("update_app_settings", { input }),
 	resetAppData: () => __TAURI_INVOKE<AppSettings>("reset_app_data"),
 	exportAppData: () => __TAURI_INVOKE<ExportData>("export_app_data"),
 	importAppData: (input: ImportDataInput) => __TAURI_INVOKE<ExportData>("import_app_data", { input }),
+	exportBackup: (filePath: string) => __TAURI_INVOKE<ExportBackupResult>("export_backup", { filePath }),
+	importBackup: (filePath: string) => __TAURI_INVOKE<ImportBackupResult>("import_backup", { filePath }),
+	getAttachmentMigrationStatus: () => __TAURI_INVOKE<AttachmentMigrationStatus>("get_attachment_migration_status"),
+	migrateLegacyAttachments: () => __TAURI_INVOKE<AttachmentMigrationResult>("migrate_legacy_attachments"),
 	checkForAvailableUpdate: () => __TAURI_INVOKE<{
 	version: string,
 	current_version: string,
@@ -58,6 +63,33 @@ export type Application = {
 	updatedAt: string,
 };
 
+export type ApplicationHistoryEvent = {
+	id: string,
+	applicationId: string,
+	eventType: string,
+	occurredAt: string,
+	companyName: string,
+	roleTitle: string,
+	statusFrom: string | null,
+	statusTo: string | null,
+	details: string | null,
+	snapshot: ApplicationHistorySnapshot | null,
+};
+
+export type ApplicationHistorySnapshot = {
+	companyName: string,
+	roleTitle: string,
+	jobPostUrl: string | null,
+	applicationSource: string,
+	salaryExpectation: string | null,
+	salaryOffer: string | null,
+	status: string,
+	appliedAt: string | null,
+	firstResponseAt: string | null,
+	notes: string | null,
+	attachments: Attachment[],
+};
+
 export type ApplicationListItem = {
 	id: string,
 	companyName: string,
@@ -70,6 +102,7 @@ export type ApplicationListItem = {
 	appliedAt: string | null,
 	firstResponseAt: string | null,
 	notes: string | null,
+	attachments: Attachment[],
 	updatedAt: string,
 	archivedAt: string | null,
 };
@@ -87,6 +120,23 @@ export type Attachment = {
 	filePath: string,
 	mimeType: string | null,
 	createdAt: string,
+};
+
+export type AttachmentInput = {
+	kind: string | null,
+	fileName: string,
+	filePath: string,
+	mimeType: string | null,
+};
+
+export type AttachmentMigrationResult = {
+	migratedCount: number,
+	skippedMissingCount: number,
+	failedCount: number,
+};
+
+export type AttachmentMigrationStatus = {
+	legacyAttachmentCount: number,
 };
 
 export type AvailableUpdate = {
@@ -173,6 +223,12 @@ export type CreateTrackedApplicationInput = {
 	appliedAt: string | null,
 	firstResponseAt: string | null,
 	notes: string | null,
+	attachments: AttachmentInput[],
+};
+
+export type ExportBackupResult = {
+	bundledAttachmentCount: number,
+	legacyExternalAttachmentCount: number,
 };
 
 export type ExportData = {
@@ -184,9 +240,14 @@ export type ExportData = {
 	tasks: Task[],
 	attachments: Attachment[],
 	stage_events: StageEvent[],
+	application_history_events: ApplicationHistoryEvent[],
 	app_settings: AppSettings,
 	export_version: string,
 	exported_at: string,
+};
+
+export type ImportBackupResult = {
+	legacyExternalAttachmentCount: number,
 };
 
 export type ImportDataInput = {
@@ -198,6 +259,7 @@ export type ImportDataInput = {
 	tasks: Task[],
 	attachments: Attachment[],
 	stage_events: StageEvent[],
+	application_history_events: ApplicationHistoryEvent[] | null,
 	app_settings: AppSettings | null,
 };
 
@@ -279,6 +341,8 @@ export type UpdateTrackedApplicationInput = {
 	salaryExpectation: string | null,
 	salaryOffer: string | null,
 	status: string,
+	appliedAt: string | null,
 	notes: string | null,
+	attachments: AttachmentInput[],
 };
 

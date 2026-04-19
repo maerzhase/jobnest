@@ -62,6 +62,7 @@ pub struct ApplicationListItem {
     pub applied_at: Option<String>,
     pub first_response_at: Option<String>,
     pub notes: Option<String>,
+    pub attachments: Vec<Attachment>,
     pub updated_at: String,
     pub archived_at: Option<String>,
 }
@@ -71,6 +72,37 @@ pub struct ApplicationListItem {
 pub struct ApplicationStatusGroup {
     pub status: String,
     pub applications: Vec<ApplicationListItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationHistoryEvent {
+    pub id: String,
+    pub application_id: String,
+    pub event_type: String,
+    pub occurred_at: String,
+    pub company_name: String,
+    pub role_title: String,
+    pub status_from: Option<String>,
+    pub status_to: Option<String>,
+    pub details: Option<String>,
+    pub snapshot: Option<ApplicationHistorySnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplicationHistorySnapshot {
+    pub company_name: String,
+    pub role_title: String,
+    pub job_post_url: Option<String>,
+    pub application_source: String,
+    pub salary_expectation: Option<String>,
+    pub salary_offer: Option<String>,
+    pub status: String,
+    pub applied_at: Option<String>,
+    pub first_response_at: Option<String>,
+    pub notes: Option<String>,
+    pub attachments: Vec<Attachment>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -198,7 +230,9 @@ pub struct UpdateTrackedApplicationInput {
     pub salary_expectation: Option<String>,
     pub salary_offer: Option<String>,
     pub status: String,
+    pub applied_at: Option<String>,
     pub notes: Option<String>,
+    pub attachments: Vec<AttachmentInput>,
 }
 
 #[derive(Debug, Clone, Deserialize, Type)]
@@ -214,6 +248,16 @@ pub struct CreateTrackedApplicationInput {
     pub applied_at: Option<String>,
     pub first_response_at: Option<String>,
     pub notes: Option<String>,
+    pub attachments: Vec<AttachmentInput>,
+}
+
+#[derive(Debug, Clone, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachmentInput {
+    pub kind: Option<String>,
+    pub file_name: String,
+    pub file_path: String,
+    pub mime_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Type)]
@@ -249,6 +293,20 @@ pub struct Attachment {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
+pub struct AttachmentMigrationStatus {
+    pub legacy_attachment_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachmentMigrationResult {
+    pub migrated_count: u32,
+    pub skipped_missing_count: u32,
+    pub failed_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct StageEvent {
     pub id: String,
     pub application_id: String,
@@ -268,6 +326,7 @@ pub struct ExportData {
     pub tasks: Vec<Task>,
     pub attachments: Vec<Attachment>,
     pub stage_events: Vec<StageEvent>,
+    pub application_history_events: Vec<ApplicationHistoryEvent>,
     pub app_settings: AppSettings,
     pub export_version: String,
     pub exported_at: String,
@@ -283,5 +342,19 @@ pub struct ImportDataInput {
     pub tasks: Vec<Task>,
     pub attachments: Vec<Attachment>,
     pub stage_events: Vec<StageEvent>,
+    pub application_history_events: Option<Vec<ApplicationHistoryEvent>>,
     pub app_settings: Option<AppSettings>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportBackupResult {
+    pub bundled_attachment_count: u32,
+    pub legacy_external_attachment_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportBackupResult {
+    pub legacy_external_attachment_count: u32,
 }

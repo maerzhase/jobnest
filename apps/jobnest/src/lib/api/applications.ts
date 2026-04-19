@@ -1,5 +1,6 @@
 import {
   commands,
+  type ApplicationHistoryEvent,
   type ApplicationListItem,
   type ApplicationStatusGroup,
   type CreateTrackedApplicationInput,
@@ -9,6 +10,7 @@ import {
 import { executeLocalApiCall } from "./client";
 
 export type {
+  ApplicationHistoryEvent,
   ApplicationListItem,
   ApplicationStatusGroup,
   CreateTrackedApplicationInput,
@@ -19,6 +21,10 @@ export type {
 export const applicationsApi = {
   list(): Promise<ApplicationStatusGroup[]> {
     return executeLocalApiCall(() => commands.listApplications());
+  },
+
+  listHistory(): Promise<ApplicationHistoryEvent[]> {
+    return executeLocalApiCall(() => commands.listApplicationHistory());
   },
 
   create(

@@ -25,7 +25,12 @@ import {
 } from "../../lib/status";
 import { ApplicationCard, ApplicationCardDragPreview } from "./application-card";
 import { ApplicationStatusBadge } from "./application-status-badge";
+import {
+  getApplicationTimelineLabel,
+  getSearchQueryState,
+} from "./helpers";
 import { KanbanColumn } from "./kanban-column";
+import { useApplicationSearch } from "./search-context";
 import { trackerPanelClass } from "./styles";
 
 type ApplicationsListProps = {
@@ -44,6 +49,59 @@ type KanbanGroup = {
   status: ApplicationStatus;
   applications: ApplicationListItem[];
 };
+
+function asApplicationStatus(status: string): ApplicationStatus | null {
+  return STATUS_OPTIONS.some((statusOption) => statusOption.value === status)
+    ? (status as ApplicationStatus)
+    : null;
+}
+
+function matchesApplicationSearch(
+  application: ApplicationListItem,
+  normalizedSearchQuery: string
+): boolean {
+  if (!normalizedSearchQuery) {
+    return true;
+  }
+
+  const searchableFields = [
+    application.roleTitle,
+    application.companyName,
+    application.notes,
+    application.applicationSource,
+    application.salaryExpectation,
+    application.salaryOffer,
+    application.jobPostUrl,
+    getApplicationTimelineLabel(application),
+  ];
+
+  return searchableFields.some((field) =>
+    field?.toLocaleLowerCase().includes(normalizedSearchQuery)
+  );
+}
+
+function sortApplicationsBySearch(
+  applications: ApplicationListItem[],
+  searchMatchesById: Map<string, boolean>,
+  hasSearchQuery: boolean
+): ApplicationListItem[] {
+  if (!hasSearchQuery) {
+    return applications;
+  }
+
+  const matches: ApplicationListItem[] = [];
+  const nonMatches: ApplicationListItem[] = [];
+
+  for (const application of applications) {
+    if (searchMatchesById.get(application.id)) {
+      matches.push(application);
+    } else {
+      nonMatches.push(application);
+    }
+  }
+
+  return [...matches, ...nonMatches];
+}
 
 function buildKanbanGroups(groups: ApplicationStatusGroup[]): KanbanGroup[] {
   const groupsByStatus = new Map(
@@ -79,6 +137,10 @@ export function ApplicationsList({
   movingApplicationId,
   viewMode,
 }: ApplicationsListProps) {
+  const { deferredSearchQuery } = useApplicationSearch();
+  const searchQuery = deferredSearchQuery;
+  const { hasQuery: hasSearchQuery, normalizedQuery: normalizedSearchQuery, trimmedQuery: trimmedSearchQuery } =
+    getSearchQueryState(searchQuery);
   const applicationsById = useMemo(
     () =>
       new Map(
@@ -88,9 +150,39 @@ export function ApplicationsList({
       ),
     [groups]
   );
+  const searchMatchesById = useMemo(
+    () =>
+      new Map(
+        groups.flatMap((group) =>
+          group.applications.map((application) => [
+            application.id,
+            matchesApplicationSearch(application, normalizedSearchQuery),
+          ] as const)
+        )
+      ),
+    [groups, normalizedSearchQuery]
+  );
+  const sortedListGroups = useMemo(
+    () =>
+      groups.map((group) => ({
+        ...group,
+        applications: sortApplicationsBySearch(
+          group.applications,
+          searchMatchesById,
+          hasSearchQuery
+        ),
+      })),
+    [groups, hasSearchQuery, searchMatchesById]
+  );
 
   const [kanbanGroups, setKanbanGroups] = useState<KanbanGroup[]>(() =>
     buildKanbanGroups(groups)
+  );
+  const [openStatuses, setOpenStatuses] = useState<Set<ApplicationStatus>>(
+    () => {
+      const initialStatus = groups[0] ? asApplicationStatus(groups[0].status) : null;
+      return new Set(initialStatus ? [initialStatus] : []);
+    }
   );
   const [dragPreviewApplication, setDragPreviewApplication] =
     useState<ApplicationListItem | null>(null);
@@ -110,6 +202,54 @@ export function ApplicationsList({
     kanbanGroupsRef.current = nextGroups;
     setKanbanGroups(nextGroups);
   }, [groups]);
+
+  useEffect(() => {
+    setOpenStatuses((current) => {
+      const availableStatuses = new Set(
+        groups
+          .map((group) => asApplicationStatus(group.status))
+          .filter((status) => status !== null)
+      );
+      const nextOpenStatuses = new Set(
+        [...current].filter((status) => availableStatuses.has(status))
+      );
+
+      const firstStatus = groups[0] ? asApplicationStatus(groups[0].status) : null;
+
+      if (nextOpenStatuses.size === 0 && firstStatus) {
+        nextOpenStatuses.add(firstStatus);
+      }
+
+      return nextOpenStatuses;
+    });
+  }, [groups]);
+
+  const sortedKanbanGroups = useMemo(
+    () =>
+      kanbanGroups.map((group) => ({
+        ...group,
+        applications: sortApplicationsBySearch(
+          group.applications,
+          searchMatchesById,
+          hasSearchQuery
+        ),
+      })),
+    [hasSearchQuery, kanbanGroups, searchMatchesById]
+  );
+  const searchMatchedStatuses = useMemo(
+    () =>
+      new Set(
+        groups
+          .filter((group) =>
+            group.applications.some((application) =>
+              searchMatchesById.get(application.id)
+            )
+          )
+          .map((group) => asApplicationStatus(group.status))
+          .filter((status) => status !== null)
+      ),
+    [groups, searchMatchesById]
+  );
 
   const setTrackedKanbanGroups = (
     updater: KanbanGroup[] | ((current: KanbanGroup[]) => KanbanGroup[])
@@ -326,13 +466,15 @@ export function ApplicationsList({
         <div className="-mx-4 min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-4 sm:-mx-5">
           <div className="h-full min-h-0 px-4 sm:px-5">
             <div className="grid h-full min-w-max auto-cols-[16rem] grid-flow-col gap-4">
-              {kanbanGroups.map((group) => (
+              {sortedKanbanGroups.map((group) => (
                 <KanbanColumn
                   key={group.status}
                   status={group.status}
                   applications={group.applications}
                   movingApplicationId={movingApplicationId}
                   onEdit={onEdit}
+                  searchMatchesById={searchMatchesById}
+                  searchQuery={trimmedSearchQuery}
                 />
               ))}
             </div>
@@ -347,12 +489,37 @@ export function ApplicationsList({
 
   return (
     <div className="space-y-4">
-      {groups.map((group, index) => (
-        <Collapsible
-          key={group.status}
-          className={trackerPanelClass}
-          defaultOpen={index === 0}
-        >
+      {sortedListGroups.map((group) => {
+        const groupStatus = asApplicationStatus(group.status);
+
+        return (
+          <Collapsible
+            key={group.status}
+            className={trackerPanelClass}
+            onOpenChange={(open) => {
+              if (!groupStatus) {
+                return;
+              }
+
+              setOpenStatuses((current) => {
+                const nextOpenStatuses = new Set(current);
+
+                if (open) {
+                  nextOpenStatuses.add(groupStatus);
+                } else {
+                  nextOpenStatuses.delete(groupStatus);
+                }
+
+                return nextOpenStatuses;
+              });
+            }}
+            open={
+              groupStatus
+                ? openStatuses.has(groupStatus) ||
+                  (hasSearchQuery && searchMatchedStatuses.has(groupStatus))
+                : false
+            }
+          >
           <CollapsibleTriggerButton className="hover:bg-muted/40">
             <span className="flex min-w-0 items-center gap-3">
               <ApplicationStatusBadge status={group.status} />
@@ -382,14 +549,17 @@ export function ApplicationsList({
                   <ApplicationCard
                     key={application.id}
                     application={application}
+                    isSearchMatch={searchMatchesById.get(application.id) ?? true}
                     onEdit={onEdit}
+                    searchQuery={trimmedSearchQuery}
                   />
                 ))}
               </ul>
             </div>
           </CollapsiblePanel>
-        </Collapsible>
-      ))}
+          </Collapsible>
+        );
+      })}
     </div>
   );
 }

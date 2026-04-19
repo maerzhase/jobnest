@@ -1,6 +1,20 @@
 export { cn } from "./lib/cn";
 export type { ButtonProps } from "./components/button";
 export { Button } from "./components/button";
+export type {
+  TabsIndicatorProps,
+  TabsListProps,
+  TabsPanelProps,
+  TabsProps,
+  TabsTabProps,
+} from "./components/tabs";
+export {
+  Tabs,
+  TabsIndicator,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+} from "./components/tabs";
 export { Collapsible } from "./components/collapsible";
 export { CollapsiblePanel } from "./components/collapsible";
 export { CollapsibleTriggerButton } from "./components/collapsible";

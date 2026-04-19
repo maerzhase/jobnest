@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  SETTINGS_SECTIONS,
-  type SettingsSection,
-} from "../../lib/settings";
+import { Tabs, TabsIndicator, TabsList, TabsTab } from "@jobnest/ui";
+import { SETTINGS_SECTIONS, type SettingsSection } from "../../lib/settings";
 
 type SettingsSidebarProps = {
   activeSection: SettingsSection;
@@ -17,47 +15,35 @@ export function SettingsSidebar({
   return (
     <aside className="lg:border-r lg:border-border lg:pr-8">
       <div className="mb-5">
-        <h2 className="text-base font-semibold tracking-tight">
-          Settings
-        </h2>
+        <h2 className="text-base font-semibold tracking-tight">Settings</h2>
         <p className="text-muted-foreground mt-1 text-sm leading-6">
           Choose a section from the sidebar.
         </p>
       </div>
 
-      <nav aria-label="Settings sections" className="grid gap-1">
-        {SETTINGS_SECTIONS.map((section) => {
-          const isActive = section.value === activeSection;
-
-          return (
-            <button
-              className={[
-                "border-l px-0 py-3 pl-4 text-left transition-colors",
-                isActive
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
-              ].join(" ")}
+      <Tabs
+        aria-label="Settings sections"
+        onValueChange={(value) => onSectionChange(value as SettingsSection)}
+        orientation="vertical"
+        value={activeSection}
+        variant="indicator"
+      >
+        <TabsList className="w-full p-0">
+          <TabsIndicator />
+          {SETTINGS_SECTIONS.map((section) => (
+            <TabsTab
+              className="min-w-0 flex-col items-start gap-0 justify-start px-0 py-3 pl-5 text-left data-[orientation=vertical]:rounded-none"
               key={section.value}
-              onClick={() => onSectionChange(section.value)}
-              type="button"
+              value={section.value}
             >
-              <span className="block text-sm font-medium">
-                {section.label}
-              </span>
-              <span
-                className={[
-                  "mt-1 block text-xs leading-5",
-                  isActive
-                    ? "text-foreground/65"
-                    : "text-muted-foreground",
-                ].join(" ")}
-              >
+              <span className="block text-sm font-medium">{section.label}</span>
+              <span className="mt-1 block text-xs leading-5 text-current/65">
                 {section.description}
               </span>
-            </button>
-          );
-        })}
-      </nav>
+            </TabsTab>
+          ))}
+        </TabsList>
+      </Tabs>
     </aside>
   );
 }

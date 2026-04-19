@@ -1,12 +1,13 @@
 /**
  * Form data mappers - convert between application models and form values
  */
-import type { ApplicationListItem } from "./api/bindings";
+import type { ApplicationListItem, AttachmentInput } from "./api/bindings";
 import {
   DEFAULT_APPLICATION_SOURCE,
   normalizeApplicationSource,
   type ApplicationSource,
 } from "./application-source";
+import { toDateInputValue } from "./date";
 import { parseSalaryValue } from "./salary";
 import { normalizeStatus, type ApplicationStatus } from "./status";
 
@@ -22,7 +23,9 @@ export type CreateApplicationValues = {
   salaryOffer: string;
   salaryOfferCurrency: string;
   status: ApplicationStatus;
+  appliedAt: string;
   notes: string;
+  attachments: AttachmentInput[];
 };
 
 export const formDefaults: CreateApplicationValues = {
@@ -35,7 +38,9 @@ export const formDefaults: CreateApplicationValues = {
   salaryOffer: "",
   salaryOfferCurrency: "EUR",
   status: "saved",
+  appliedAt: "",
   notes: "",
+  attachments: [],
 };
 
 export function getFormDefaults(
@@ -73,6 +78,13 @@ export function mapApplicationToFormValues(
     salaryOffer: salaryOffer.amount,
     salaryOfferCurrency: salaryOffer.currency,
     status: normalizeStatus(application.status),
+    appliedAt: toDateInputValue(application.appliedAt),
     notes: application.notes ?? "",
+    attachments: application.attachments.map((attachment) => ({
+      kind: attachment.kind,
+      fileName: attachment.fileName,
+      filePath: attachment.filePath,
+      mimeType: attachment.mimeType,
+    })),
   };
 }
