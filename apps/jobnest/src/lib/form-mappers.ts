@@ -7,6 +7,7 @@ import {
   normalizeApplicationSource,
   type ApplicationSource,
 } from "./application-source";
+import { toDateInputValue } from "./date";
 import { parseSalaryValue } from "./salary";
 import { normalizeStatus, type ApplicationStatus } from "./status";
 
@@ -22,6 +23,7 @@ export type CreateApplicationValues = {
   salaryOffer: string;
   salaryOfferCurrency: string;
   status: ApplicationStatus;
+  appliedAt: string;
   notes: string;
 };
 
@@ -35,6 +37,7 @@ export const formDefaults: CreateApplicationValues = {
   salaryOffer: "",
   salaryOfferCurrency: "EUR",
   status: "saved",
+  appliedAt: "",
   notes: "",
 };
 
@@ -73,6 +76,7 @@ export function mapApplicationToFormValues(
     salaryOffer: salaryOffer.amount,
     salaryOfferCurrency: salaryOffer.currency,
     status: normalizeStatus(application.status),
+    appliedAt: toDateInputValue(application.appliedAt),
     notes: application.notes ?? "",
   };
 }

@@ -198,6 +198,7 @@ pub struct UpdateTrackedApplicationInput {
     pub salary_expectation: Option<String>,
     pub salary_offer: Option<String>,
     pub status: String,
+    pub applied_at: Option<String>,
     pub notes: Option<String>,
 }
 

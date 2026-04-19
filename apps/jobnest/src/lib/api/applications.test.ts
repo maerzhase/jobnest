@@ -98,6 +98,7 @@ describe("applicationsApi", () => {
       salaryExpectation: null,
       salaryOffer: null,
       status: "interview",
+      appliedAt: "2026-04-10T00:00:00Z",
       notes: "Recruiter call booked",
     };
 
@@ -110,7 +111,7 @@ describe("applicationsApi", () => {
       salaryExpectation: null,
       salaryOffer: null,
       status: input.status,
-      appliedAt: null,
+      appliedAt: input.appliedAt,
       firstResponseAt: null,
       notes: input.notes,
       updatedAt: "2026-04-14T00:00:00Z",
