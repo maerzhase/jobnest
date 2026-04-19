@@ -279,6 +279,25 @@ pub fn export_typescript_bindings() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+pub(crate) fn app_storage_dir(
+    app_handle: &AppHandle,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let app_data_dir = app_handle.path().app_data_dir()?;
+
+    #[cfg(debug_assertions)]
+    {
+        if let Some(folder_name) = app_data_dir.file_name() {
+            let dev_folder_name = format!("{}-dev", folder_name.to_string_lossy());
+            let dev_app_data_dir = app_data_dir.with_file_name(dev_folder_name);
+            fs::create_dir_all(&dev_app_data_dir)?;
+            return Ok(dev_app_data_dir);
+        }
+    }
+
+    fs::create_dir_all(&app_data_dir)?;
+    Ok(app_data_dir)
+}
+
 fn typescript_bindings_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src/lib/api/bindings.ts")
 }
@@ -425,9 +444,7 @@ fn load_window_state(
 }
 
 fn window_state_path(app_handle: &AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let app_data_dir = app_handle.path().app_data_dir()?;
-    fs::create_dir_all(&app_data_dir)?;
-    Ok(app_data_dir.join(WINDOW_STATE_FILE))
+    Ok(app_storage_dir(app_handle)?.join(WINDOW_STATE_FILE))
 }
 
 fn trigger_update_check(app: &AppHandle) {

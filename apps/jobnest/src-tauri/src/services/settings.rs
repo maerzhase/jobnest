@@ -44,15 +44,11 @@ impl SettingsService {
         self.db.import_backup(&file_path).await
     }
 
-    pub async fn attachment_migration_status(
-        &self,
-    ) -> Result<AttachmentMigrationStatus, AppError> {
+    pub async fn attachment_migration_status(&self) -> Result<AttachmentMigrationStatus, AppError> {
         self.db.get_attachment_migration_status().await
     }
 
-    pub async fn migrate_legacy_attachments(
-        &self,
-    ) -> Result<AttachmentMigrationResult, AppError> {
+    pub async fn migrate_legacy_attachments(&self) -> Result<AttachmentMigrationResult, AppError> {
         self.db.migrate_legacy_attachments().await
     }
 }
