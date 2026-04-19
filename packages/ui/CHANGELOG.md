@@ -1,5 +1,24 @@
 # @jobnest/ui
 
+## 0.0.2
+
+### Patch Changes
+
+- 39dcd1c: Feature: add application source to the tracked application form and show select labels correctly
+
+  - Add the "How this role came in" field to the tracked application form.
+  - Fix shared select rendering so closed triggers show the selected item label instead of the stored value.
+  - Derive form enum validation from shared option lists to reduce duplication and drift risk.
+
+- 168371c: - Buttons: add sizes + ghost variant \n ToggleGroup: add sizes variants \n Tokens: add surface design tokens
+- e3175a2: Document and add Storybook coverage for the expanded UI component catalog.
+
+  - Cover the implemented shared primitives: Button, Field, Input, Select, ToggleGroup, Collapsible, Dialog, AlertDialog, and Toast.
+  - Add stories for the primary states and composition patterns used by Jobnest across those components.
+  - Update the package README to point developers to Storybook and source exports as the stable places to inspect the current component surface.
+
+- 9151ea5: Tokens: Use greyscale colors
+
 ## 0.0.1
 
 ### Patch Changes
