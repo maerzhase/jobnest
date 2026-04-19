@@ -83,6 +83,7 @@ describe("appDataApi", () => {
       tasks: [],
       attachments: [],
       stage_events: [],
+      application_history_events: [],
       app_settings: {
         preferredCurrency: "EUR",
         updatedAt: "2026-04-14T00:00:00Z",
@@ -106,6 +107,7 @@ describe("appDataApi", () => {
       tasks: [],
       attachments: [],
       stage_events: [],
+      application_history_events: null,
       app_settings: null,
     };
 
@@ -118,6 +120,7 @@ describe("appDataApi", () => {
       tasks: [],
       attachments: [],
       stage_events: [],
+      application_history_events: [],
       app_settings: {
         preferredCurrency: "EUR",
         updatedAt: "2026-04-14T00:00:00Z",

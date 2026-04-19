@@ -4,11 +4,13 @@ import type { LocalApiError } from "./client";
 
 const {
   listApplicationsMock,
+  listApplicationHistoryMock,
   createTrackedApplicationMock,
   updateTrackedApplicationMock,
   deleteTrackedApplicationMock,
 } = vi.hoisted(() => ({
   listApplicationsMock: vi.fn(),
+  listApplicationHistoryMock: vi.fn(),
   createTrackedApplicationMock: vi.fn(),
   updateTrackedApplicationMock: vi.fn(),
   deleteTrackedApplicationMock: vi.fn(),
@@ -17,6 +19,7 @@ const {
 vi.mock("./bindings", () => ({
   commands: {
     listApplications: listApplicationsMock,
+    listApplicationHistory: listApplicationHistoryMock,
     createTrackedApplication: createTrackedApplicationMock,
     updateTrackedApplication: updateTrackedApplicationMock,
     deleteTrackedApplication: deleteTrackedApplicationMock,
@@ -96,6 +99,28 @@ describe("applicationsApi", () => {
     await applicationsApi.create(input);
 
     expect(createTrackedApplicationMock).toHaveBeenCalledWith(input);
+  });
+
+  it("lists history through the generated bindings", async () => {
+    const history = [
+      {
+        id: "history_1",
+        applicationId: "app_1",
+        eventType: "created",
+        occurredAt: "2026-04-14T09:00:00Z",
+        companyName: "JobNest",
+        roleTitle: "Frontend Engineer",
+        statusFrom: null,
+        statusTo: "saved",
+        details: null,
+        snapshot: null,
+      },
+    ];
+
+    listApplicationHistoryMock.mockResolvedValue(history);
+
+    await expect(applicationsApi.listHistory()).resolves.toEqual(history);
+    expect(listApplicationHistoryMock).toHaveBeenCalledTimes(1);
   });
 
   it("updates a tracked application through the generated bindings", async () => {
