@@ -29,6 +29,10 @@ export const commands = {
 	resetAppData: () => __TAURI_INVOKE<AppSettings>("reset_app_data"),
 	exportAppData: () => __TAURI_INVOKE<ExportData>("export_app_data"),
 	importAppData: (input: ImportDataInput) => __TAURI_INVOKE<ExportData>("import_app_data", { input }),
+	exportBackup: (filePath: string) => __TAURI_INVOKE<ExportBackupResult>("export_backup", { filePath }),
+	importBackup: (filePath: string) => __TAURI_INVOKE<ImportBackupResult>("import_backup", { filePath }),
+	getAttachmentMigrationStatus: () => __TAURI_INVOKE<AttachmentMigrationStatus>("get_attachment_migration_status"),
+	migrateLegacyAttachments: () => __TAURI_INVOKE<AttachmentMigrationResult>("migrate_legacy_attachments"),
 	checkForAvailableUpdate: () => __TAURI_INVOKE<{
 	version: string,
 	current_version: string,
@@ -125,6 +129,16 @@ export type AttachmentInput = {
 	mimeType: string | null,
 };
 
+export type AttachmentMigrationResult = {
+	migratedCount: number,
+	skippedMissingCount: number,
+	failedCount: number,
+};
+
+export type AttachmentMigrationStatus = {
+	legacyAttachmentCount: number,
+};
+
 export type AvailableUpdate = {
 	version: string,
 	current_version: string,
@@ -212,6 +226,11 @@ export type CreateTrackedApplicationInput = {
 	attachments: AttachmentInput[],
 };
 
+export type ExportBackupResult = {
+	bundledAttachmentCount: number,
+	legacyExternalAttachmentCount: number,
+};
+
 export type ExportData = {
 	companies: Company[],
 	roles: Role[],
@@ -225,6 +244,10 @@ export type ExportData = {
 	app_settings: AppSettings,
 	export_version: string,
 	exported_at: string,
+};
+
+export type ImportBackupResult = {
+	legacyExternalAttachmentCount: number,
 };
 
 export type ImportDataInput = {

@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fmt::Write as _, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Write as _,
+    fs::{self, File},
+    io::{Read, Write},
+    path::{Path, PathBuf},
+};
 
 use chrono::Utc;
 use serde_json;
@@ -10,13 +16,16 @@ use tauri::{AppHandle, Manager};
 use thiserror::Error;
 use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 use uuid::Uuid;
+use zip::{write::SimpleFileOptions, CompressionMethod, ZipArchive, ZipWriter};
 
 use crate::models::{
     AppSettings, Application, ApplicationHistoryEvent, ApplicationHistorySnapshot,
-    ApplicationListItem, ApplicationStatusGroup, Attachment, AttachmentInput, Company, Contact,
-    CreateApplicationInput, CreateCompanyInput, CreateContactInput, CreateNoteInput,
-    CreateRoleInput, CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
-    UpdateAppSettingsInput, UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
+    ApplicationListItem, ApplicationStatusGroup, Attachment, AttachmentInput,
+    AttachmentMigrationResult, AttachmentMigrationStatus, Company, Contact, CreateApplicationInput,
+    CreateCompanyInput, CreateContactInput, CreateNoteInput, CreateRoleInput,
+    CreateTrackedApplicationInput, ExportBackupResult, ImportBackupResult, ImportDataInput, Note,
+    Role, SearchFilters, SearchResult, UpdateAppSettingsInput, UpdateApplicationStatusInput,
+    UpdateTrackedApplicationInput,
 };
 
 const ENTITY_APPLICATION: &str = "application";
@@ -44,12 +53,16 @@ const ENTITY_CONTACT: &str = "contact";
 const ENTITY_NOTE: &str = "note";
 const ENTITY_ROLE: &str = "role";
 const DEFAULT_PREFERRED_CURRENCY: &str = "EUR";
+const ATTACHMENTS_DIR: &str = "attachments";
+const BACKUP_JSON_PATH: &str = "backup.json";
+const BACKUP_EXPORT_VERSION: &str = "2.0";
 
 type AppResult<T> = Result<T, AppError>;
 
 #[derive(Debug, Clone)]
 pub struct Database {
     pool: SqlitePool,
+    attachments_dir: PathBuf,
 }
 
 #[derive(Debug, Error)]
@@ -62,12 +75,18 @@ pub enum AppError {
     MissingAppDataDir,
     #[error("filesystem error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+    #[error("archive error: {0}")]
+    Archive(#[from] zip::result::ZipError),
     #[error("invalid search query")]
     InvalidSearchQuery,
     #[error("invalid application status: {0}")]
     InvalidApplicationStatus(String),
     #[error("invalid application source: {0}")]
     InvalidApplicationSource(String),
+    #[error("invalid backup file: {0}")]
+    InvalidBackup(String),
 }
 
 #[derive(Debug, Clone)]
@@ -82,6 +101,18 @@ struct SearchDocument {
     updated_at: String,
 }
 
+#[derive(Debug)]
+struct BundledAttachmentFile {
+    archive_path: String,
+    source_path: PathBuf,
+}
+
+#[derive(Debug)]
+struct ManagedAttachmentFile {
+    final_path: PathBuf,
+    bytes: Vec<u8>,
+}
+
 impl Database {
     pub async fn new(app: &AppHandle) -> AppResult<Self> {
         let app_data_dir = app
@@ -91,19 +122,27 @@ impl Database {
         std::fs::create_dir_all(&app_data_dir)?;
 
         let db_path = app_data_dir.join("jobnest.sqlite");
-        Self::connect(&db_path).await
+        let attachments_dir = app_data_dir.join(ATTACHMENTS_DIR);
+        fs::create_dir_all(&attachments_dir)?;
+
+        Self::connect(&db_path, attachments_dir).await
     }
 
     #[cfg(test)]
     pub async fn for_path(path: &Path) -> AppResult<Self> {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent)?;
+            let attachments_dir = parent.join(ATTACHMENTS_DIR);
+            fs::create_dir_all(&attachments_dir)?;
+            return Self::connect(path, attachments_dir).await;
         }
 
-        Self::connect(path).await
+        let attachments_dir = PathBuf::from(ATTACHMENTS_DIR);
+        fs::create_dir_all(&attachments_dir)?;
+        Self::connect(path, attachments_dir).await
     }
 
-    async fn connect(path: &Path) -> AppResult<Self> {
+    async fn connect(path: &Path, attachments_dir: PathBuf) -> AppResult<Self> {
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true)
@@ -118,7 +157,10 @@ impl Database {
 
         sqlx::migrate!("./migrations").run(&pool).await?;
 
-        let database = Self { pool };
+        let database = Self {
+            pool,
+            attachments_dir,
+        };
         database.remove_legacy_backfilled_update_history().await?;
         database.backfill_application_history().await?;
 
@@ -613,6 +655,11 @@ impl Database {
     pub async fn delete_tracked_application(&self, application_id: &str) -> AppResult<()> {
         let list_item = self.get_application_list_item(application_id).await?;
         let snapshot = application_list_item_to_history_snapshot(&list_item);
+        let managed_attachment_paths = list_item
+            .attachments
+            .iter()
+            .map(|attachment| attachment.file_path.clone())
+            .collect::<Vec<_>>();
         let current = sqlx::query(
             r#"
             SELECT
@@ -693,6 +740,9 @@ impl Database {
         } else {
             self.upsert_search_document_for_company(&company_id).await?;
         }
+
+        self.cleanup_unreferenced_managed_paths(&managed_attachment_paths)
+            .await?;
 
         Ok(())
     }
@@ -1087,6 +1137,7 @@ impl Database {
         .await?;
 
         transaction.commit().await?;
+        self.clear_managed_attachments_dir()?;
 
         Ok(AppSettings {
             preferred_currency: DEFAULT_PREFERRED_CURRENCY.to_owned(),
@@ -1305,16 +1356,17 @@ impl Database {
             stage_events,
             application_history_events,
             app_settings,
-            export_version: "1.0".to_owned(),
+            export_version: BACKUP_EXPORT_VERSION.to_owned(),
             exported_at: now,
         })
     }
 
     pub async fn import_app_data(
         &self,
-        data: crate::models::ImportDataInput,
+        data: ImportDataInput,
     ) -> AppResult<crate::models::ExportData> {
         let now = now_utc();
+        let managed_paths_to_cleanup = self.list_managed_attachment_paths().await?;
         let mut transaction = self.pool.begin().await?;
 
         // Clear all data in dependency order
@@ -1527,6 +1579,8 @@ impl Database {
         let should_backfill_history = data.application_history_events.is_none();
 
         transaction.commit().await?;
+        self.cleanup_unreferenced_managed_paths(&managed_paths_to_cleanup)
+            .await?;
 
         if should_backfill_history {
             self.backfill_application_history().await?;
@@ -1551,9 +1605,431 @@ impl Database {
             stage_events: data.stage_events,
             application_history_events,
             app_settings,
-            export_version: "1.0".to_owned(),
+            export_version: BACKUP_EXPORT_VERSION.to_owned(),
             exported_at: now,
         })
+    }
+
+    pub async fn export_backup(&self, file_path: &str) -> AppResult<ExportBackupResult> {
+        let export_data = self.export_app_data().await?;
+        let (backup_data, bundled_files, legacy_external_attachment_count) =
+            self.prepare_backup_export_data(&export_data)?;
+        let bundled_attachment_count = bundled_files.len() as u32;
+
+        let file = File::create(file_path)?;
+        let mut writer = ZipWriter::new(file);
+        let options = SimpleFileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o600);
+
+        writer.start_file(BACKUP_JSON_PATH, options)?;
+        writer.write_all(serde_json::to_string_pretty(&backup_data)?.as_bytes())?;
+
+        for bundled_file in bundled_files {
+            writer.start_file(&bundled_file.archive_path, options)?;
+            writer.write_all(&fs::read(&bundled_file.source_path)?)?;
+        }
+
+        writer.finish()?;
+
+        Ok(ExportBackupResult {
+            bundled_attachment_count,
+            legacy_external_attachment_count,
+        })
+    }
+
+    pub async fn import_backup(&self, file_path: &str) -> AppResult<ImportBackupResult> {
+        let path = Path::new(file_path);
+        let extension = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| extension.to_ascii_lowercase());
+
+        if matches!(extension.as_deref(), Some("json")) {
+            let data = serde_json::from_str::<ImportDataInput>(&fs::read_to_string(path)?)?;
+            let result = self.import_app_data(data).await?;
+            return Ok(ImportBackupResult {
+                legacy_external_attachment_count: result
+                    .attachments
+                    .iter()
+                    .filter(|attachment| !self.is_managed_attachment_path(&attachment.file_path))
+                    .count() as u32,
+            });
+        }
+
+        let file = File::open(path)?;
+        let mut archive = ZipArchive::new(file)
+            .map_err(|err| AppError::InvalidBackup(format!("could not read archive: {err}")))?;
+        let mut backup_json = String::new();
+        archive
+            .by_name(BACKUP_JSON_PATH)
+            .map_err(|_| AppError::InvalidBackup("missing backup.json".to_owned()))?
+            .read_to_string(&mut backup_json)?;
+
+        let export_data = serde_json::from_str::<crate::models::ExportData>(&backup_json)
+            .map_err(|err| AppError::InvalidBackup(format!("invalid backup.json: {err}")))?;
+        let extracted_files = read_archive_attachment_files(&mut archive)?;
+        let (import_data, managed_files) =
+            self.restore_backup_attachment_paths(export_data, &extracted_files)?;
+
+        self.clear_managed_attachments_dir()?;
+        for managed_file in managed_files {
+            if let Some(parent) = managed_file.final_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&managed_file.final_path, managed_file.bytes)?;
+        }
+
+        let result = self.import_app_data(import_data).await?;
+        Ok(ImportBackupResult {
+            legacy_external_attachment_count: result
+                .attachments
+                .iter()
+                .filter(|attachment| !self.is_managed_attachment_path(&attachment.file_path))
+                .count() as u32,
+        })
+    }
+
+    pub async fn get_attachment_migration_status(&self) -> AppResult<AttachmentMigrationStatus> {
+        let attachment_rows = self.list_attachment_rows().await?;
+        let legacy_attachment_count = attachment_rows
+            .into_iter()
+            .filter(|attachment| !self.is_managed_attachment_path(&attachment.file_path))
+            .count() as u32;
+
+        Ok(AttachmentMigrationStatus {
+            legacy_attachment_count,
+        })
+    }
+
+    pub async fn migrate_legacy_attachments(&self) -> AppResult<AttachmentMigrationResult> {
+        let rows = self.list_attachment_rows().await?;
+        let mut migrated_count = 0;
+        let mut skipped_missing_count = 0;
+        let mut failed_count = 0;
+
+        for attachment in rows {
+            if self.is_managed_attachment_path(&attachment.file_path) {
+                continue;
+            }
+
+            let source_path = PathBuf::from(&attachment.file_path);
+            if !source_path.exists() {
+                skipped_missing_count += 1;
+                continue;
+            }
+
+            match self
+                .copy_attachment_to_managed_storage(
+                    &source_path,
+                    &attachment.id,
+                    Some(&attachment.file_name),
+                )
+            {
+                Ok(managed_path) => match self
+                    .update_attachment_path_references(
+                        &attachment.id,
+                        &attachment.application_id,
+                        &attachment.file_path,
+                        &managed_path,
+                    )
+                    .await
+                {
+                    Ok(()) => migrated_count += 1,
+                    Err(_) => failed_count += 1,
+                },
+                Err(_) => failed_count += 1,
+            };
+        }
+
+        Ok(AttachmentMigrationResult {
+            migrated_count,
+            skipped_missing_count,
+            failed_count,
+        })
+    }
+
+    async fn list_attachment_rows(&self) -> AppResult<Vec<Attachment>> {
+        let rows = sqlx::query(
+            "SELECT id, application_id, kind, file_name, file_path, mime_type, created_at FROM attachments ORDER BY created_at ASC, file_name ASC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| Attachment {
+                id: row.get("id"),
+                application_id: row.get("application_id"),
+                kind: row.get("kind"),
+                file_name: row.get("file_name"),
+                file_path: row.get("file_path"),
+                mime_type: row.get("mime_type"),
+                created_at: row.get("created_at"),
+            })
+            .collect())
+    }
+
+    async fn list_managed_attachment_paths(&self) -> AppResult<Vec<String>> {
+        Ok(self
+            .list_attachment_rows()
+            .await?
+            .into_iter()
+            .map(|attachment| attachment.file_path)
+            .filter(|file_path| self.is_managed_attachment_path(file_path))
+            .collect())
+    }
+
+    fn prepare_backup_export_data(
+        &self,
+        export_data: &crate::models::ExportData,
+    ) -> AppResult<(crate::models::ExportData, Vec<BundledAttachmentFile>, u32)> {
+        let mut backup_data = export_data.clone();
+        let mut bundled_files = Vec::new();
+        let mut bundled_path_map = HashMap::new();
+        let mut legacy_external_paths = HashSet::new();
+
+        for attachment in iter_export_attachments(&backup_data) {
+            if self.is_managed_attachment_path(&attachment.file_path) {
+                let archive_path = archive_attachment_path(attachment);
+                if !bundled_path_map.contains_key(&attachment.file_path) {
+                    let source_path = PathBuf::from(&attachment.file_path);
+                    if !source_path.exists() {
+                        return Err(AppError::InvalidBackup(format!(
+                            "managed attachment file is missing: {}",
+                            attachment.file_name
+                        )));
+                    }
+                    bundled_files.push(BundledAttachmentFile {
+                        archive_path: archive_path.clone(),
+                        source_path,
+                    });
+                    bundled_path_map.insert(attachment.file_path.clone(), archive_path);
+                }
+            } else {
+                legacy_external_paths.insert(attachment.file_path.clone());
+            }
+        }
+
+        rewrite_export_attachment_paths(&mut backup_data, |attachment| {
+            bundled_path_map.get(&attachment.file_path).cloned()
+        });
+
+        Ok((
+            backup_data,
+            bundled_files,
+            legacy_external_paths.len() as u32,
+        ))
+    }
+
+    fn restore_backup_attachment_paths(
+        &self,
+        export_data: crate::models::ExportData,
+        extracted_files: &HashMap<String, Vec<u8>>,
+    ) -> AppResult<(ImportDataInput, Vec<ManagedAttachmentFile>)> {
+        let mut attachments = export_data.attachments;
+        let mut application_history_events = export_data.application_history_events;
+        let mut referenced_archive_paths = HashSet::new();
+        let mut managed_files = Vec::new();
+
+        rewrite_attachment_collection_paths(&mut attachments, |attachment| {
+            resolve_import_attachment_path(
+                &self.attachments_dir,
+                attachment,
+                extracted_files,
+                &mut referenced_archive_paths,
+                &mut managed_files,
+            )
+        })?;
+
+        rewrite_history_snapshot_attachment_paths(&mut application_history_events, |attachment| {
+            resolve_import_attachment_path(
+                &self.attachments_dir,
+                attachment,
+                extracted_files,
+                &mut referenced_archive_paths,
+                &mut managed_files,
+            )
+        })?;
+
+        Ok((
+            ImportDataInput {
+                companies: export_data.companies,
+                roles: export_data.roles,
+                applications: export_data.applications,
+                contacts: export_data.contacts,
+                notes: export_data.notes,
+                tasks: export_data.tasks,
+                attachments,
+                stage_events: export_data.stage_events,
+                application_history_events: Some(application_history_events),
+                app_settings: Some(export_data.app_settings),
+            },
+            managed_files,
+        ))
+    }
+
+    fn clear_managed_attachments_dir(&self) -> AppResult<()> {
+        if self.attachments_dir.exists() {
+            fs::remove_dir_all(&self.attachments_dir)?;
+        }
+        fs::create_dir_all(&self.attachments_dir)?;
+        Ok(())
+    }
+
+    fn is_managed_attachment_path(&self, file_path: &str) -> bool {
+        let Ok(candidate) = Path::new(file_path).canonicalize() else {
+            return Path::new(file_path).starts_with(&self.attachments_dir);
+        };
+        let Ok(root) = self.attachments_dir.canonicalize() else {
+            return false;
+        };
+
+        candidate.starts_with(root)
+    }
+
+    fn copy_attachment_to_managed_storage(
+        &self,
+        source_path: &Path,
+        attachment_id: &str,
+        file_name: Option<&str>,
+    ) -> AppResult<PathBuf> {
+        fs::create_dir_all(&self.attachments_dir)?;
+        let managed_path =
+            self.managed_attachment_path(attachment_id, file_name, Some(source_path));
+        fs::copy(source_path, &managed_path)?;
+        Ok(managed_path)
+    }
+
+    fn managed_attachment_path(
+        &self,
+        attachment_id: &str,
+        file_name: Option<&str>,
+        source_path: Option<&Path>,
+    ) -> PathBuf {
+        let extension = file_name
+            .and_then(|name| Path::new(name).extension().and_then(|ext| ext.to_str()))
+            .or_else(|| source_path.and_then(|path| path.extension().and_then(|ext| ext.to_str())))
+            .filter(|extension| !extension.is_empty());
+
+        let file_name = match extension {
+            Some(extension) => format!("{attachment_id}.{extension}"),
+            None => attachment_id.to_owned(),
+        };
+
+        self.attachments_dir.join(file_name)
+    }
+
+    async fn cleanup_unreferenced_managed_paths(&self, file_paths: &[String]) -> AppResult<()> {
+        let unique_paths = file_paths
+            .iter()
+            .filter(|file_path| self.is_managed_attachment_path(file_path))
+            .cloned()
+            .collect::<HashSet<_>>();
+
+        for file_path in unique_paths {
+            let reference_count = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM attachments WHERE file_path = ?",
+            )
+            .bind(&file_path)
+            .fetch_one(&self.pool)
+            .await?;
+
+            if reference_count == 0
+                && self
+                    .count_history_snapshot_attachment_references(&file_path)
+                    .await?
+                    == 0
+            {
+                match fs::remove_file(&file_path) {
+                    Ok(()) => {}
+                    Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(err) => return Err(AppError::Io(err)),
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn count_history_snapshot_attachment_references(&self, file_path: &str) -> AppResult<u32> {
+        let rows = sqlx::query(
+            "SELECT snapshot_json FROM application_history_events WHERE snapshot_json IS NOT NULL",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        let mut count = 0_u32;
+
+        for row in rows {
+            let snapshot_json: String = row.get("snapshot_json");
+            let snapshot = serde_json::from_str::<ApplicationHistorySnapshot>(&snapshot_json)?;
+            count += snapshot
+                .attachments
+                .iter()
+                .filter(|attachment| attachment.file_path == file_path)
+                .count() as u32;
+        }
+
+        Ok(count)
+    }
+
+    async fn update_attachment_path_references(
+        &self,
+        attachment_id: &str,
+        application_id: &str,
+        old_file_path: &str,
+        new_file_path: &Path,
+    ) -> AppResult<()> {
+        let new_file_path = new_file_path.to_string_lossy().into_owned();
+
+        sqlx::query("UPDATE attachments SET file_path = ? WHERE id = ?")
+            .bind(&new_file_path)
+            .bind(attachment_id)
+            .execute(&self.pool)
+            .await?;
+
+        self.rewrite_history_snapshot_attachment_path(application_id, old_file_path, &new_file_path)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn rewrite_history_snapshot_attachment_path(
+        &self,
+        application_id: &str,
+        old_file_path: &str,
+        new_file_path: &str,
+    ) -> AppResult<()> {
+        let rows = sqlx::query(
+            "SELECT id, snapshot_json FROM application_history_events WHERE application_id = ? AND snapshot_json IS NOT NULL",
+        )
+        .bind(application_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        for row in rows {
+            let event_id: String = row.get("id");
+            let snapshot_json: String = row.get("snapshot_json");
+            let mut snapshot = serde_json::from_str::<ApplicationHistorySnapshot>(&snapshot_json)?;
+            let mut changed = false;
+
+            for attachment in &mut snapshot.attachments {
+                if attachment.file_path == old_file_path {
+                    attachment.file_path = new_file_path.to_owned();
+                    changed = true;
+                }
+            }
+
+            if changed {
+                sqlx::query("UPDATE application_history_events SET snapshot_json = ? WHERE id = ?")
+                    .bind(serde_json::to_string(&snapshot)?)
+                    .bind(event_id)
+                    .execute(&self.pool)
+                    .await?;
+            }
+        }
+
+        Ok(())
     }
 
     async fn upsert_search_document_for_company(&self, company_id: &str) -> AppResult<()> {
@@ -1961,16 +2437,29 @@ impl Database {
         application_id: &str,
         attachments: Vec<AttachmentInput>,
     ) -> AppResult<()> {
+        let existing_attachments = sqlx::query(
+            "SELECT id, file_path FROM attachments WHERE application_id = ?",
+        )
+        .bind(application_id)
+        .fetch_all(&self.pool)
+        .await?;
+        let managed_paths_to_cleanup = existing_attachments
+            .into_iter()
+            .map(|row| row.get::<String, _>("file_path"))
+            .collect::<Vec<_>>();
+
         sqlx::query("DELETE FROM attachments WHERE application_id = ?")
             .bind(application_id)
             .execute(&self.pool)
             .await?;
 
+        let mut seen_file_paths = HashSet::new();
+
         for attachment in attachments {
             let Some(file_path) = trim_to_option(Some(attachment.file_path)) else {
                 continue;
             };
-            let file_name = trim_to_option(Some(attachment.file_name))
+            let mut file_name = trim_to_option(Some(attachment.file_name))
                 .or_else(|| {
                     Path::new(&file_path)
                         .file_name()
@@ -1978,22 +2467,49 @@ impl Database {
                         .map(|name| name.to_owned())
                 })
                 .unwrap_or_else(|| file_path.clone());
+            let attachment_id = new_id();
+            let source_path = PathBuf::from(&file_path);
+            let stored_path = if self.is_managed_attachment_path(&file_path) {
+                PathBuf::from(&file_path)
+            } else {
+                self.copy_attachment_to_managed_storage(
+                    &source_path,
+                    &attachment_id,
+                    Some(&file_name),
+                )?
+            };
+            let stored_path_string = stored_path.to_string_lossy().into_owned();
+
+            if !seen_file_paths.insert(stored_path_string.clone()) {
+                continue;
+            }
+
+            if file_name.trim().is_empty() {
+                file_name = stored_path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or(&stored_path_string)
+                    .to_owned();
+            }
 
             sqlx::query(
                 "INSERT INTO attachments (id, application_id, kind, file_name, file_path, mime_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             )
-            .bind(new_id())
+            .bind(attachment_id)
             .bind(application_id)
             .bind(
                 trim_to_option(attachment.kind).unwrap_or_else(|| "file".to_owned()),
             )
             .bind(file_name)
-            .bind(file_path)
+            .bind(stored_path_string)
             .bind(trim_to_option(attachment.mime_type))
             .bind(now_utc())
             .execute(&self.pool)
             .await?;
         }
+
+        self.cleanup_unreferenced_managed_paths(&managed_paths_to_cleanup)
+            .await?;
 
         Ok(())
     }
@@ -2133,6 +2649,138 @@ impl Database {
 
         Ok(())
     }
+}
+
+fn iter_export_attachments(export_data: &crate::models::ExportData) -> Vec<&Attachment> {
+    let mut attachments = export_data.attachments.iter().collect::<Vec<_>>();
+
+    for event in &export_data.application_history_events {
+        if let Some(snapshot) = &event.snapshot {
+            attachments.extend(snapshot.attachments.iter());
+        }
+    }
+
+    attachments
+}
+
+fn rewrite_export_attachment_paths(
+    export_data: &mut crate::models::ExportData,
+    mut rewrite: impl FnMut(&Attachment) -> Option<String>,
+) {
+    for attachment in &mut export_data.attachments {
+        if let Some(next_path) = rewrite(attachment) {
+            attachment.file_path = next_path;
+        }
+    }
+
+    for event in &mut export_data.application_history_events {
+        if let Some(snapshot) = &mut event.snapshot {
+            for attachment in &mut snapshot.attachments {
+                if let Some(next_path) = rewrite(attachment) {
+                    attachment.file_path = next_path;
+                }
+            }
+        }
+    }
+}
+
+fn rewrite_attachment_collection_paths(
+    attachments: &mut [Attachment],
+    mut rewrite: impl FnMut(&mut Attachment) -> AppResult<()>,
+) -> AppResult<()> {
+    for attachment in attachments {
+        rewrite(attachment)?;
+    }
+
+    Ok(())
+}
+
+fn rewrite_history_snapshot_attachment_paths(
+    events: &mut [ApplicationHistoryEvent],
+    mut rewrite: impl FnMut(&mut Attachment) -> AppResult<()>,
+) -> AppResult<()> {
+    for event in events {
+        if let Some(snapshot) = &mut event.snapshot {
+            for attachment in &mut snapshot.attachments {
+                rewrite(attachment)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn archive_attachment_path(attachment: &Attachment) -> String {
+    let extension = Path::new(&attachment.file_name)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .filter(|extension| !extension.is_empty());
+
+    match extension {
+        Some(extension) => format!("{ATTACHMENTS_DIR}/{}.{}", attachment.id, extension),
+        None => format!("{ATTACHMENTS_DIR}/{}", attachment.id),
+    }
+}
+
+fn read_archive_attachment_files(
+    archive: &mut ZipArchive<File>,
+) -> AppResult<HashMap<String, Vec<u8>>> {
+    let mut files = HashMap::new();
+
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|err| AppError::InvalidBackup(format!("invalid archive entry: {err}")))?;
+        let entry_name = entry.name().to_owned();
+        if entry_name == BACKUP_JSON_PATH || entry_name.ends_with('/') {
+            continue;
+        }
+
+        let mut bytes = Vec::new();
+        entry.read_to_end(&mut bytes)?;
+        files.insert(entry_name, bytes);
+    }
+
+    Ok(files)
+}
+
+fn resolve_import_attachment_path(
+    attachments_dir: &Path,
+    attachment: &mut Attachment,
+    extracted_files: &HashMap<String, Vec<u8>>,
+    referenced_archive_paths: &mut HashSet<String>,
+    managed_files: &mut Vec<ManagedAttachmentFile>,
+) -> AppResult<()> {
+    if attachment.file_path.starts_with(&format!("{ATTACHMENTS_DIR}/")) {
+        let archive_path = attachment.file_path.clone();
+        let file_name = Path::new(&archive_path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| AppError::InvalidBackup("invalid attachment archive path".to_owned()))?;
+
+        if !extracted_files.contains_key(&archive_path) {
+            return Err(AppError::InvalidBackup(format!(
+                "missing bundled attachment: {archive_path}"
+            )));
+        }
+
+        let final_path = attachments_dir.join(file_name);
+        if referenced_archive_paths.insert(archive_path.clone()) {
+            managed_files.push(ManagedAttachmentFile {
+                final_path: final_path.clone(),
+                bytes: extracted_files
+                    .get(&archive_path)
+                    .cloned()
+                    .ok_or_else(|| AppError::InvalidBackup(format!(
+                        "missing bundled attachment: {archive_path}"
+                    )))?,
+            });
+        }
+
+        attachment.file_path = final_path.to_string_lossy().into_owned();
+    }
+
+    Ok(())
 }
 
 fn map_application_list_item(
@@ -2352,9 +3000,17 @@ fn build_fts_query(input: &str) -> AppResult<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, path::PathBuf};
+
     use tempfile::tempdir;
 
     use super::*;
+
+    fn create_test_file(root: &Path, name: &str, contents: &str) -> PathBuf {
+        let path = root.join(name);
+        fs::write(&path, contents).expect("write test file");
+        path
+    }
 
     #[tokio::test]
     async fn creates_schema_and_searches_accented_text() {
@@ -2477,6 +3133,7 @@ mod tests {
         let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
             .await
             .expect("db");
+        let resume_path = create_test_file(temp_dir.path(), "resume.pdf", "resume-v1");
 
         let saved = db
             .create_tracked_application(CreateTrackedApplicationInput {
@@ -2493,7 +3150,7 @@ mod tests {
                 attachments: vec![AttachmentInput {
                     kind: Some("resume".to_owned()),
                     file_name: "resume.pdf".to_owned(),
-                    file_path: "/Users/m3000/Documents/resume.pdf".to_owned(),
+                    file_path: resume_path.to_string_lossy().into_owned(),
                     mime_type: Some("application/pdf".to_owned()),
                 }],
             })
@@ -2512,6 +3169,10 @@ mod tests {
         assert_eq!(saved.notes.as_deref(), Some("Strong portfolio match."));
         assert_eq!(saved.attachments.len(), 1);
         assert_eq!(saved.attachments[0].file_name, "resume.pdf");
+        assert!(saved.attachments[0].file_path.starts_with(
+            db.attachments_dir.to_string_lossy().as_ref()
+        ));
+        assert!(Path::new(&saved.attachments[0].file_path).exists());
 
         let applied = db
             .update_application_status(UpdateApplicationStatusInput {
@@ -2623,6 +3284,10 @@ mod tests {
         let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
             .await
             .expect("db");
+        let resume_v1_path = create_test_file(temp_dir.path(), "resume-v1.pdf", "resume-v1");
+        let resume_v2_path = create_test_file(temp_dir.path(), "resume-v2.pdf", "resume-v2");
+        let cover_letter_path =
+            create_test_file(temp_dir.path(), "cover-letter.pdf", "cover-letter");
 
         let saved = db
             .create_tracked_application(CreateTrackedApplicationInput {
@@ -2639,12 +3304,13 @@ mod tests {
                 attachments: vec![AttachmentInput {
                     kind: Some("resume".to_owned()),
                     file_name: "resume-v1.pdf".to_owned(),
-                    file_path: "/Users/m3000/Documents/resume-v1.pdf".to_owned(),
+                    file_path: resume_v1_path.to_string_lossy().into_owned(),
                     mime_type: Some("application/pdf".to_owned()),
                 }],
             })
             .await
             .expect("saved application");
+        let original_managed_path = saved.attachments[0].file_path.clone();
 
         let updated = db
             .update_tracked_application(UpdateTrackedApplicationInput {
@@ -2662,13 +3328,13 @@ mod tests {
                     AttachmentInput {
                         kind: Some("resume".to_owned()),
                         file_name: "resume-v2.pdf".to_owned(),
-                        file_path: "/Users/m3000/Documents/resume-v2.pdf".to_owned(),
+                        file_path: resume_v2_path.to_string_lossy().into_owned(),
                         mime_type: Some("application/pdf".to_owned()),
                     },
                     AttachmentInput {
                         kind: Some("cover_letter".to_owned()),
                         file_name: "cover-letter.pdf".to_owned(),
-                        file_path: "/Users/m3000/Documents/cover-letter.pdf".to_owned(),
+                        file_path: cover_letter_path.to_string_lossy().into_owned(),
                         mime_type: Some("application/pdf".to_owned()),
                     },
                 ],
@@ -2694,10 +3360,13 @@ mod tests {
         assert_eq!(updated.attachments.len(), 2);
         assert_eq!(updated.attachments[0].file_name, "resume-v2.pdf");
         assert_eq!(updated.attachments[1].file_name, "cover-letter.pdf");
+        assert!(Path::new(&original_managed_path).exists());
 
         db.delete_tracked_application(&saved.id)
             .await
             .expect("delete application");
+        assert!(Path::new(&updated.attachments[0].file_path).exists());
+        assert!(Path::new(&updated.attachments[1].file_path).exists());
 
         let groups = db
             .list_applications_grouped()
@@ -2724,6 +3393,161 @@ mod tests {
         assert_eq!(company_count, 0);
         assert_eq!(role_count, 0);
         assert_eq!(app_doc_count, 0);
+    }
+
+    #[tokio::test]
+    async fn reset_app_data_removes_managed_attachment_files() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+        let resume_path = create_test_file(temp_dir.path(), "resume.pdf", "resume");
+
+        let saved = db
+            .create_tracked_application(CreateTrackedApplicationInput {
+                job_post_url: "https://jobs.example.com/frontend".to_owned(),
+                company_name: "Acme".to_owned(),
+                role_title: "Frontend Engineer".to_owned(),
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
+                salary_expectation: None,
+                salary_offer: None,
+                status: Some(APPLICATION_STATUS_APPLIED.to_owned()),
+                applied_at: None,
+                first_response_at: None,
+                notes: None,
+                attachments: vec![AttachmentInput {
+                    kind: Some("resume".to_owned()),
+                    file_name: "resume.pdf".to_owned(),
+                    file_path: resume_path.to_string_lossy().into_owned(),
+                    mime_type: Some("application/pdf".to_owned()),
+                }],
+            })
+            .await
+            .expect("application");
+
+        let managed_path = saved.attachments[0].file_path.clone();
+        assert!(Path::new(&managed_path).exists());
+
+        db.reset_app_data().await.expect("reset");
+
+        assert!(!Path::new(&managed_path).exists());
+    }
+
+    #[tokio::test]
+    async fn export_and_import_backup_preserve_managed_attachments() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+        let resume_path = create_test_file(temp_dir.path(), "resume.pdf", "resume");
+
+        let saved = db
+            .create_tracked_application(CreateTrackedApplicationInput {
+                job_post_url: "https://jobs.example.com/backend".to_owned(),
+                company_name: "Acme".to_owned(),
+                role_title: "Backend Engineer".to_owned(),
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
+                salary_expectation: None,
+                salary_offer: None,
+                status: Some(APPLICATION_STATUS_APPLIED.to_owned()),
+                applied_at: None,
+                first_response_at: None,
+                notes: Some("Portable attachment".to_owned()),
+                attachments: vec![AttachmentInput {
+                    kind: Some("resume".to_owned()),
+                    file_name: "resume.pdf".to_owned(),
+                    file_path: resume_path.to_string_lossy().into_owned(),
+                    mime_type: Some("application/pdf".to_owned()),
+                }],
+            })
+            .await
+            .expect("application");
+
+        let backup_path = temp_dir.path().join("jobnest-backup.zip");
+        let export_result = db
+            .export_backup(backup_path.to_string_lossy().as_ref())
+            .await
+            .expect("export backup");
+        assert_eq!(export_result.bundled_attachment_count, 1);
+        assert_eq!(export_result.legacy_external_attachment_count, 0);
+
+        let managed_path = saved.attachments[0].file_path.clone();
+        db.reset_app_data().await.expect("reset");
+        assert!(!Path::new(&managed_path).exists());
+
+        let import_result = db
+            .import_backup(backup_path.to_string_lossy().as_ref())
+            .await
+            .expect("import backup");
+        assert_eq!(import_result.legacy_external_attachment_count, 0);
+
+        let restored_groups = db.list_applications_grouped().await.expect("groups");
+        assert_eq!(restored_groups.len(), 1);
+        assert_eq!(restored_groups[0].applications[0].attachments.len(), 1);
+        let restored_attachment = &restored_groups[0].applications[0].attachments[0];
+        assert!(Path::new(&restored_attachment.file_path).exists());
+        assert_eq!(
+            fs::read_to_string(&restored_attachment.file_path).expect("managed file"),
+            "resume"
+        );
+    }
+
+    #[tokio::test]
+    async fn migrate_legacy_attachments_copies_existing_files() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+        let legacy_path = create_test_file(temp_dir.path(), "legacy-resume.pdf", "legacy");
+
+        let saved = db
+            .create_tracked_application(CreateTrackedApplicationInput {
+                job_post_url: "https://jobs.example.com/ios".to_owned(),
+                company_name: "Acme".to_owned(),
+                role_title: "iOS Engineer".to_owned(),
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
+                salary_expectation: None,
+                salary_offer: None,
+                status: Some(APPLICATION_STATUS_SAVED.to_owned()),
+                applied_at: None,
+                first_response_at: None,
+                notes: None,
+                attachments: vec![AttachmentInput {
+                    kind: Some("resume".to_owned()),
+                    file_name: "legacy-resume.pdf".to_owned(),
+                    file_path: legacy_path.to_string_lossy().into_owned(),
+                    mime_type: Some("application/pdf".to_owned()),
+                }],
+            })
+            .await
+            .expect("application");
+
+        sqlx::query("UPDATE attachments SET file_path = ? WHERE application_id = ?")
+            .bind(legacy_path.to_string_lossy().into_owned())
+            .bind(&saved.id)
+            .execute(&db.pool)
+            .await
+            .expect("force legacy path");
+
+        let status = db
+            .get_attachment_migration_status()
+            .await
+            .expect("migration status");
+        assert_eq!(status.legacy_attachment_count, 1);
+
+        let result = db
+            .migrate_legacy_attachments()
+            .await
+            .expect("migrate attachments");
+        assert_eq!(result.migrated_count, 1);
+        assert_eq!(result.skipped_missing_count, 0);
+        assert_eq!(result.failed_count, 0);
+
+        let groups = db.list_applications_grouped().await.expect("groups");
+        let attachment = &groups[0].applications[0].attachments[0];
+        assert!(attachment.file_path.starts_with(db.attachments_dir.to_string_lossy().as_ref()));
+        assert!(Path::new(&attachment.file_path).exists());
+        assert_eq!(fs::read_to_string(&attachment.file_path).expect("managed copy"), "legacy");
     }
 
     #[tokio::test]
@@ -2938,7 +3762,7 @@ mod tests {
         assert_eq!(export.notes.len(), 1);
         assert_eq!(export.notes[0].body, "Test note");
 
-        assert_eq!(export.export_version, "1.0");
+        assert_eq!(export.export_version, BACKUP_EXPORT_VERSION);
         assert!(!export.exported_at.is_empty());
     }
 
