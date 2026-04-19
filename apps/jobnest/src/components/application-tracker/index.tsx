@@ -3,8 +3,9 @@
 import {
   IconLayoutKanban,
   IconListDetails,
+  IconSearch,
 } from "@tabler/icons-react";
-import { ToggleGroup, ToggleGroupItem } from "@jobnest/ui";
+import { Input, ToggleGroup, ToggleGroupItem } from "@jobnest/ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import {
@@ -19,12 +20,17 @@ import {
   getFormDefaults,
   mapApplicationToFormValues,
 } from "../../lib/form-mappers";
+import { fromDateInputValue } from "../../lib/date";
 import { formatSalaryValue, parseSalaryValue } from "../../lib/salary";
 import type { ApplicationStatus } from "../../lib/status";
 import { showErrorToast, showSuccessToast } from "../../lib/toast";
 import { ApplicationDeleteAlert } from "./application-delete-alert";
 import { ApplicationFormDialog } from "./application-form-dialog";
 import { ApplicationsList } from "./applications-list";
+import {
+  ApplicationSearchProvider,
+  useApplicationSearch,
+} from "./search-context";
 
 type ApplicationDialogState =
   | { mode: "create" }
@@ -33,9 +39,18 @@ type ApplicationDialogState =
 type ApplicationViewMode = "list" | "kanban";
 
 export function ApplicationTracker() {
+  return (
+    <ApplicationSearchProvider>
+      <ApplicationTrackerContent />
+    </ApplicationSearchProvider>
+  );
+}
+
+function ApplicationTrackerContent() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { searchQuery, setSearchQuery } = useApplicationSearch();
   const [applicationGroups, setApplicationGroups] = useState<
     ApplicationStatusGroup[]
   >([]);
@@ -180,7 +195,9 @@ export function ApplicationTracker() {
               values.salaryOfferCurrency || preferredCurrency
             ) ?? null,
             status: values.status,
+            appliedAt: fromDateInputValue(values.appliedAt),
             notes: values.notes || null,
+            attachments: values.attachments,
           });
 
           closeDialog();
@@ -206,9 +223,10 @@ export function ApplicationTracker() {
             values.salaryOfferCurrency || preferredCurrency
           ) ?? null,
           status: values.status,
-          appliedAt: null,
+          appliedAt: fromDateInputValue(values.appliedAt),
           firstResponseAt: null,
           notes: values.notes || null,
+          attachments: values.attachments,
         });
 
         closeDialog();
@@ -321,7 +339,14 @@ export function ApplicationTracker() {
           ) ?? null,
           salaryOffer:
             formatSalaryValue(offer.amount, offer.currency) ?? null,
+          appliedAt: application.appliedAt,
           notes: application.notes ?? null,
+          attachments: application.attachments.map((attachment) => ({
+            kind: attachment.kind,
+            fileName: attachment.fileName,
+            filePath: attachment.filePath,
+            mimeType: attachment.mimeType,
+          })),
         });
         refreshApplications();
       } catch (error) {
@@ -341,13 +366,29 @@ export function ApplicationTracker() {
     <>
       <section className="flex h-full min-h-0 w-full flex-col">
         <div className="sticky top-0 z-10 w-full border-b border-border/40 backdrop-blur-xl backdrop-saturate-150 dark:bg-card/50">
-          <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-3 px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2>
                 Applications ({totalApplications})
               </h2>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <div className="relative w-full sm:w-72">
+                <IconSearch
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  aria-label="Search applications"
+                  autoComplete="off"
+                  className="pl-9"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search applications"
+                  size="sm"
+                  type="search"
+                  value={searchQuery}
+                />
+              </div>
               <ToggleGroup
                 aria-label="Application view"
                 onValueChange={(nextView) => {
