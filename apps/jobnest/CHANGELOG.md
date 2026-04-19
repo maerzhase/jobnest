@@ -1,5 +1,32 @@
 # jobnest
 
+## 0.0.3
+
+### Patch Changes
+
+- c77166a: Add a dashboard view with charts and KPI summaries for application pipeline health, activity, and source performance.
+- 3434a73: Add portable backups that bundle JobNest-managed attachments with your application data.
+
+  Add an attachment migration tool so older linked files can be copied into JobNest storage for safer restores.
+
+- 71aff55: Add search to the applications view with live matching in both list and kanban layouts.
+
+  Matching applications now rise to the top as you type, matched text is highlighted more clearly inside cards, non-matching cards stay visible but dimmed, and matching list sections open automatically during search.
+
+  Add a compact input size so header search fields can align with small view controls.
+
+- b0b9714: Add a tabs component to the design system with an animated indicator for active states.
+
+  Update the sidebar to use vertical tabs so navigation feels more distinct from primary actions.
+
+- cd3a361: Add file attachments to tracked applications so you can keep resumes, cover letters, and related files linked to each role.
+- 2929fef: - Feature: Editable application date
+  - Layout: Clean dialog form layout
+- 57d8290: Add a complete application history view that records creations, edits, status changes, deletions, and best-effort backfilled events for existing data.
+- Updated dependencies [71aff55]
+- Updated dependencies [b0b9714]
+  - @jobnest/ui@0.0.3
+
 ## 0.0.2
 
 ### Patch Changes
