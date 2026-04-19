@@ -4,14 +4,20 @@ import { memo, type ButtonHTMLAttributes } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconGripVertical } from "@tabler/icons-react";
-import { formatDate } from "../../lib/date";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import { ApplicationStatusBadge } from "./application-status-badge";
+import {
+  getApplicationTimelineLabel,
+  getSearchQueryState,
+} from "./helpers";
+import { HighlightedText } from "./highlighted-text";
 
 type ApplicationCardProps = {
   application: ApplicationListItem;
   onEdit: (application: ApplicationListItem) => void;
   isDragging?: boolean;
+  isSearchMatch?: boolean;
+  searchQuery?: string;
   showStatus?: boolean;
   showDragHandle?: boolean;
 };
@@ -20,25 +26,10 @@ type ApplicationCardContentProps = ApplicationCardProps & {
   dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>;
 };
 
-function getTimelineLabel(application: ApplicationListItem): string {
-  if (application.firstResponseAt) {
-    if (application.appliedAt) {
-      return `Applied ${formatDate(application.appliedAt)} · First answer ${formatDate(application.firstResponseAt)}`;
-    }
-
-    return `First answer ${formatDate(application.firstResponseAt)}`;
-  }
-
-  if (application.appliedAt) {
-    return `Applied ${formatDate(application.appliedAt)}`;
-  }
-
-  return `Saved ${formatDate(application.updatedAt)}`;
-}
-
 function ApplicationCardContent({
   application,
   onEdit,
+  searchQuery,
   showStatus = true,
   showDragHandle = false,
   dragHandleProps,
@@ -60,10 +51,16 @@ function ApplicationCardContent({
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-sm font-semibold leading-tight">
-                {application.roleTitle}
+                <HighlightedText
+                  query={searchQuery}
+                  text={application.roleTitle}
+                />
               </h3>
               <p className="mt-1 truncate text-xs text-muted-foreground">
-                {application.companyName}
+                <HighlightedText
+                  query={searchQuery}
+                  text={application.companyName}
+                />
               </p>
             </div>
           </div>
@@ -71,19 +68,32 @@ function ApplicationCardContent({
           <div className="space-y-2 text-xs text-muted-foreground">
             {application.salaryExpectation || application.salaryOffer ? (
               <p className="line-clamp-1">
-                {[
-                  application.salaryExpectation
-                    ? `${application.salaryExpectation}`
-                    : null,
-                  application.salaryOffer ? `${application.salaryOffer}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" / ")}
+                <HighlightedText
+                  query={searchQuery}
+                  text={[
+                    application.salaryExpectation
+                      ? `${application.salaryExpectation}`
+                      : null,
+                    application.salaryOffer ? `${application.salaryOffer}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" / ")}
+                />
               </p>
             ) : null}
-            <p className="line-clamp-1">{getTimelineLabel(application)}</p>
+            <p className="line-clamp-1">
+              <HighlightedText
+                query={searchQuery}
+                text={getApplicationTimelineLabel(application)}
+              />
+            </p>
             {application.notes ? (
-              <p className="line-clamp-2">{application.notes}</p>
+              <p className="line-clamp-2">
+                <HighlightedText
+                  query={searchQuery}
+                  text={application.notes}
+                />
+              </p>
             ) : null}
           </div>
         </button>
@@ -120,6 +130,8 @@ function ApplicationCardComponent({
   application,
   onEdit,
   isDragging = false,
+  isSearchMatch = true,
+  searchQuery,
   showStatus = true,
   showDragHandle = false,
 }: ApplicationCardProps) {
@@ -140,6 +152,7 @@ function ApplicationCardComponent({
   const style = {
     transform: CSS.Transform.toString(transform),
   };
+  const { hasQuery } = getSearchQueryState(searchQuery);
 
   return (
     <li
@@ -148,13 +161,16 @@ function ApplicationCardComponent({
       className={`group rounded-xl border border-border/70 bg-card shadow-[0_1px_0_rgba(255,255,255,0.5)_inset] hover:border-foreground/15 hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
         isSortableDragging || isDragging
           ? "opacity-50"
-          : ""
+          : hasQuery && !isSearchMatch
+            ? "opacity-45"
+            : ""
       }`}
     >
       <ApplicationCardContent
         application={application}
         dragHandleProps={{ ...attributes, ...listeners }}
         onEdit={onEdit}
+        searchQuery={searchQuery}
         showDragHandle={showDragHandle}
         showStatus={showStatus}
       />
@@ -173,6 +189,7 @@ export function ApplicationCardDragPreview({
       <ApplicationCardContent
         application={application}
         onEdit={onEdit}
+        searchQuery={undefined}
         showDragHandle
         showStatus={false}
       />
