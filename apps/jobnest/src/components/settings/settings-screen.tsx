@@ -1,7 +1,6 @@
 "use client";
 
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { Button } from "@jobnest/ui";
@@ -22,7 +21,6 @@ import { ResetConfirmDialog } from "./reset-confirm-dialog";
 import { SettingsSidebar } from "./settings-sidebar";
 
 export function SettingsScreen() {
-  const router = useRouter();
   const { resolvedTheme, setTheme, theme } = useTheme();
   const { settings, isLoading, loadSettings, updateCurrency, isSavingCurrency } =
     useSettings();
@@ -243,26 +241,6 @@ export function SettingsScreen() {
           />
 
           <div className="min-w-0 space-y-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Preferences
-                </p>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                  Settings
-                </h2>
-              </div>
-              <Button
-                className="w-fit gap-2"
-                onClick={() => router.push("/")}
-                type="button"
-                variant="secondary"
-              >
-                <span aria-hidden="true">←</span>
-                <span>Applications</span>
-              </Button>
-            </div>
-
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
                 Loading settings...
