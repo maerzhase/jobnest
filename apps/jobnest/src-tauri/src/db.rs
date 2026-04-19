@@ -1,4 +1,4 @@
-use std::{fmt::Write as _, path::Path};
+use std::{collections::HashMap, fmt::Write as _, path::Path};
 
 use chrono::Utc;
 use sqlx::{
@@ -11,10 +11,11 @@ use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 use uuid::Uuid;
 
 use crate::models::{
-    AppSettings, Application, ApplicationListItem, ApplicationStatusGroup, Company, Contact,
-    CreateApplicationInput, CreateCompanyInput, CreateContactInput, CreateNoteInput,
-    CreateRoleInput, CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
-    UpdateAppSettingsInput, UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
+    AppSettings, Application, ApplicationListItem, ApplicationStatusGroup, Attachment,
+    AttachmentInput, Company, Contact, CreateApplicationInput, CreateCompanyInput,
+    CreateContactInput, CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, Note,
+    Role, SearchFilters, SearchResult, UpdateAppSettingsInput, UpdateApplicationStatusInput,
+    UpdateTrackedApplicationInput,
 };
 
 const ENTITY_APPLICATION: &str = "application";
@@ -307,6 +308,9 @@ impl Database {
             .await?;
         }
 
+        self.replace_application_attachments(&application.id, input.attachments)
+            .await?;
+
         self.get_application_list_item(&application.id).await
     }
 
@@ -509,6 +513,9 @@ impl Database {
             }
             (None, None) => {}
         }
+
+        self.replace_application_attachments(&input.application_id, input.attachments)
+            .await?;
 
         let company_id: String = current.get("company_id");
         let role_id: String = current.get("role_id");
@@ -825,11 +832,17 @@ impl Database {
         )
         .fetch_all(&self.pool)
         .await?;
+        let application_ids = rows
+            .iter()
+            .map(|row| row.get::<String, _>("id"))
+            .collect::<Vec<_>>();
+        let mut attachments_by_application =
+            self.load_attachments_by_application(&application_ids).await?;
 
         let mut groups: Vec<ApplicationStatusGroup> = Vec::new();
 
         for row in rows {
-            let application = map_application_list_item(&row);
+            let application = map_application_list_item(&row, &mut attachments_by_application);
             let application_status = application.status.clone();
 
             if let Some(group) = groups.last_mut() {
@@ -1661,14 +1674,107 @@ impl Database {
         .bind(application_id)
         .fetch_one(&self.pool)
         .await?;
+        let mut attachments_by_application = self
+            .load_attachments_by_application(&[application_id.to_owned()])
+            .await?;
 
-        Ok(map_application_list_item(&row))
+        Ok(map_application_list_item(&row, &mut attachments_by_application))
+    }
+
+    async fn load_attachments_by_application(
+        &self,
+        application_ids: &[String],
+    ) -> AppResult<HashMap<String, Vec<Attachment>>> {
+        if application_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let mut builder = QueryBuilder::<Sqlite>::new(
+            "SELECT id, application_id, kind, file_name, file_path, mime_type, created_at FROM attachments WHERE application_id IN (",
+        );
+        let mut separated = builder.separated(", ");
+
+        for application_id in application_ids {
+            separated.push_bind(application_id);
+        }
+
+        separated.push_unseparated(") ORDER BY created_at ASC, file_name ASC");
+
+        let rows = builder.build().fetch_all(&self.pool).await?;
+        let mut attachments_by_application: HashMap<String, Vec<Attachment>> = HashMap::new();
+
+        for row in rows {
+            let attachment = Attachment {
+                id: row.get("id"),
+                application_id: row.get("application_id"),
+                kind: row.get("kind"),
+                file_name: row.get("file_name"),
+                file_path: row.get("file_path"),
+                mime_type: row.get("mime_type"),
+                created_at: row.get("created_at"),
+            };
+
+            attachments_by_application
+                .entry(attachment.application_id.clone())
+                .or_default()
+                .push(attachment);
+        }
+
+        Ok(attachments_by_application)
+    }
+
+    async fn replace_application_attachments(
+        &self,
+        application_id: &str,
+        attachments: Vec<AttachmentInput>,
+    ) -> AppResult<()> {
+        sqlx::query("DELETE FROM attachments WHERE application_id = ?")
+            .bind(application_id)
+            .execute(&self.pool)
+            .await?;
+
+        for attachment in attachments {
+            let Some(file_path) = trim_to_option(Some(attachment.file_path)) else {
+                continue;
+            };
+            let file_name = trim_to_option(Some(attachment.file_name))
+                .or_else(|| {
+                    Path::new(&file_path)
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .map(|name| name.to_owned())
+                })
+                .unwrap_or_else(|| file_path.clone());
+
+            sqlx::query(
+                "INSERT INTO attachments (id, application_id, kind, file_name, file_path, mime_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(new_id())
+            .bind(application_id)
+            .bind(
+                trim_to_option(attachment.kind).unwrap_or_else(|| "file".to_owned()),
+            )
+            .bind(file_name)
+            .bind(file_path)
+            .bind(trim_to_option(attachment.mime_type))
+            .bind(now_utc())
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
     }
 }
 
-fn map_application_list_item(row: &sqlx::sqlite::SqliteRow) -> ApplicationListItem {
+fn map_application_list_item(
+    row: &sqlx::sqlite::SqliteRow,
+    attachments_by_application: &mut HashMap<String, Vec<Attachment>>,
+) -> ApplicationListItem {
+    let id: String = row.get("id");
+
     ApplicationListItem {
-        id: row.get("id"),
+        attachments: attachments_by_application.remove(&id).unwrap_or_default(),
+        id,
         company_name: row.get("company_name"),
         role_title: row.get("role_title"),
         job_post_url: row.get("job_post_url"),
@@ -1936,6 +2042,12 @@ mod tests {
                 applied_at: None,
                 first_response_at: None,
                 notes: Some("Strong portfolio match.".to_owned()),
+                attachments: vec![AttachmentInput {
+                    kind: Some("resume".to_owned()),
+                    file_name: "resume.pdf".to_owned(),
+                    file_path: "/Users/m3000/Documents/resume.pdf".to_owned(),
+                    mime_type: Some("application/pdf".to_owned()),
+                }],
             })
             .await
             .expect("saved application");
@@ -1950,6 +2062,8 @@ mod tests {
         assert_eq!(saved.salary_expectation.as_deref(), Some("EUR 60k"));
         assert_eq!(saved.application_source, APPLICATION_SOURCE_REFERRAL);
         assert_eq!(saved.notes.as_deref(), Some("Strong portfolio match."));
+        assert_eq!(saved.attachments.len(), 1);
+        assert_eq!(saved.attachments[0].file_name, "resume.pdf");
 
         let applied = db
             .update_application_status(UpdateApplicationStatusInput {
@@ -2006,6 +2120,7 @@ mod tests {
             applied_at: None,
             first_response_at: None,
             notes: None,
+            attachments: vec![],
         })
         .await
         .expect("applied application");
@@ -2021,6 +2136,7 @@ mod tests {
             applied_at: None,
             first_response_at: None,
             notes: None,
+            attachments: vec![],
         })
         .await
         .expect("saved application");
@@ -2036,6 +2152,7 @@ mod tests {
             applied_at: None,
             first_response_at: None,
             notes: None,
+            attachments: vec![],
         })
         .await
         .expect("second applied application");
@@ -2071,6 +2188,12 @@ mod tests {
                 applied_at: None,
                 first_response_at: None,
                 notes: Some("Initial note".to_owned()),
+                attachments: vec![AttachmentInput {
+                    kind: Some("resume".to_owned()),
+                    file_name: "resume-v1.pdf".to_owned(),
+                    file_path: "/Users/m3000/Documents/resume-v1.pdf".to_owned(),
+                    mime_type: Some("application/pdf".to_owned()),
+                }],
             })
             .await
             .expect("saved application");
@@ -2087,6 +2210,20 @@ mod tests {
                 status: APPLICATION_STATUS_INTERVIEW.to_owned(),
                 applied_at: Some("2026-04-10T00:00:00Z".to_owned()),
                 notes: Some("Updated note".to_owned()),
+                attachments: vec![
+                    AttachmentInput {
+                        kind: Some("resume".to_owned()),
+                        file_name: "resume-v2.pdf".to_owned(),
+                        file_path: "/Users/m3000/Documents/resume-v2.pdf".to_owned(),
+                        mime_type: Some("application/pdf".to_owned()),
+                    },
+                    AttachmentInput {
+                        kind: Some("cover_letter".to_owned()),
+                        file_name: "cover-letter.pdf".to_owned(),
+                        file_path: "/Users/m3000/Documents/cover-letter.pdf".to_owned(),
+                        mime_type: Some("application/pdf".to_owned()),
+                    },
+                ],
             })
             .await
             .expect("updated application");
@@ -2106,6 +2243,9 @@ mod tests {
         assert_eq!(updated.status, APPLICATION_STATUS_INTERVIEW);
         assert_eq!(updated.applied_at.as_deref(), Some("2026-04-10T00:00:00Z"));
         assert_eq!(updated.notes.as_deref(), Some("Updated note"));
+        assert_eq!(updated.attachments.len(), 2);
+        assert_eq!(updated.attachments[0].file_name, "resume-v2.pdf");
+        assert_eq!(updated.attachments[1].file_name, "cover-letter.pdf");
 
         db.delete_tracked_application(&saved.id)
             .await
