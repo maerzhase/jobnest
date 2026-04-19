@@ -101,7 +101,7 @@ export function ApplicationHistoryScreen() {
 
         {!isLoading && filteredEvents.length > 0 ? (
           <div className="bg-background/70">
-            <div className="hidden grid-cols-[2.5rem_14rem_minmax(0,1fr)_10rem] gap-3 border-b border-border/50 px-4 py-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground md:grid">
+            <div className="sticky top-0 z-10 hidden grid-cols-[2.5rem_14rem_minmax(0,1fr)_10rem] gap-3 border-b border-border/50 bg-background/95 px-4 py-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/75 md:grid">
               <span aria-hidden="true" />
               <span>Event</span>
               <span>Application</span>
