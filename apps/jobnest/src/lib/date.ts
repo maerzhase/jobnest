@@ -14,6 +14,19 @@ export function formatDate(value: string): string {
   }).format(parsed);
 }
 
+export function formatDateTime(value: string): string {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
+}
+
 export function toDateInputValue(value: string | null | undefined): string {
   if (!value) {
     return "";

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Write as _, path::Path};
 
 use chrono::Utc;
+use serde_json;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     QueryBuilder, Row, Sqlite, SqlitePool,
@@ -11,11 +12,11 @@ use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 use uuid::Uuid;
 
 use crate::models::{
-    AppSettings, Application, ApplicationListItem, ApplicationStatusGroup, Attachment,
-    AttachmentInput, Company, Contact, CreateApplicationInput, CreateCompanyInput,
-    CreateContactInput, CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, Note,
-    Role, SearchFilters, SearchResult, UpdateAppSettingsInput, UpdateApplicationStatusInput,
-    UpdateTrackedApplicationInput,
+    AppSettings, Application, ApplicationHistoryEvent, ApplicationHistorySnapshot,
+    ApplicationListItem, ApplicationStatusGroup, Attachment, AttachmentInput, Company, Contact,
+    CreateApplicationInput, CreateCompanyInput, CreateContactInput, CreateNoteInput,
+    CreateRoleInput, CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
+    UpdateAppSettingsInput, UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
 };
 
 const ENTITY_APPLICATION: &str = "application";
@@ -29,6 +30,15 @@ const APPLICATION_SOURCE_EXTERNAL_RECRUITER: &str = "external_recruiter";
 const APPLICATION_SOURCE_INTERNAL_RECRUITER: &str = "internal_recruiter";
 const APPLICATION_SOURCE_REFERRAL: &str = "referral";
 const APPLICATION_SOURCE_OTHER: &str = "other";
+const HISTORY_EVENT_CREATED: &str = "created";
+const HISTORY_EVENT_UPDATED: &str = "updated";
+const HISTORY_EVENT_STATUS_CHANGED: &str = "status_changed";
+const HISTORY_EVENT_DELETED: &str = "deleted";
+const HISTORY_DETAIL_BACKFILLED_CREATE: &str = "Inferred from existing application data when history tracking was added.";
+const HISTORY_DETAIL_LEGACY_BACKFILLED_UPDATE: &str =
+    "Inferred from timestamps on an existing application when history tracking was added.";
+const HISTORY_DETAIL_BACKFILLED_STATUS: &str =
+    "Recovered from the existing status transition log when history tracking was added.";
 const ENTITY_COMPANY: &str = "company";
 const ENTITY_CONTACT: &str = "contact";
 const ENTITY_NOTE: &str = "note";
@@ -108,7 +118,11 @@ impl Database {
 
         sqlx::migrate!("./migrations").run(&pool).await?;
 
-        Ok(Self { pool })
+        let database = Self { pool };
+        database.remove_legacy_backfilled_update_history().await?;
+        database.backfill_application_history().await?;
+
+        Ok(database)
     }
 
     pub async fn create_company(&self, input: CreateCompanyInput) -> AppResult<Company> {
@@ -311,7 +325,22 @@ impl Database {
         self.replace_application_attachments(&application.id, input.attachments)
             .await?;
 
-        self.get_application_list_item(&application.id).await
+        let list_item = self.get_application_list_item(&application.id).await?;
+        let snapshot = application_list_item_to_history_snapshot(&list_item);
+        self.insert_application_history_event(
+            &application.id,
+            HISTORY_EVENT_CREATED,
+            &application.created_at,
+            &snapshot.company_name,
+            &snapshot.role_title,
+            None,
+            Some(snapshot.status.clone()),
+            None,
+            Some(&snapshot),
+        )
+        .await?;
+
+        Ok(list_item)
     }
 
     pub async fn update_application_status(
@@ -361,7 +390,7 @@ impl Database {
         self.upsert_search_document_for_application(&input.application_id)
             .await?;
 
-        Ok(Application {
+        let application = Application {
             id: input.application_id,
             role_id: current.get("role_id"),
             status: next_status,
@@ -375,13 +404,31 @@ impl Database {
             archived_at: current.get("archived_at"),
             created_at: current.get("created_at"),
             updated_at: now,
-        })
+        };
+
+        let list_item = self.get_application_list_item(&application.id).await?;
+        let snapshot = application_list_item_to_history_snapshot(&list_item);
+        self.insert_application_history_event(
+            &application.id,
+            HISTORY_EVENT_STATUS_CHANGED,
+            &application.updated_at,
+            &snapshot.company_name,
+            &snapshot.role_title,
+            current.get::<Option<String>, _>("status"),
+            Some(snapshot.status.clone()),
+            None,
+            Some(&snapshot),
+        )
+        .await?;
+
+        Ok(application)
     }
 
     pub async fn update_tracked_application(
         &self,
         input: UpdateTrackedApplicationInput,
     ) -> AppResult<ApplicationListItem> {
+        let previous_list_item = self.get_application_list_item(&input.application_id).await?;
         let current = sqlx::query(
             r#"
             SELECT
@@ -523,10 +570,49 @@ impl Database {
         self.upsert_search_document_for_role(&role_id).await?;
         self.upsert_search_document_for_application(&input.application_id)
             .await?;
-        self.get_application_list_item(&input.application_id).await
+
+        let updated_list_item = self.get_application_list_item(&input.application_id).await?;
+        let updated_snapshot = application_list_item_to_history_snapshot(&updated_list_item);
+        let previous_snapshot = application_list_item_to_history_snapshot(&previous_list_item);
+        let update_details =
+            summarize_history_update_changes(&previous_snapshot, &updated_snapshot);
+
+        if let Some(details) = update_details.as_deref() {
+            self.insert_application_history_event(
+                &input.application_id,
+                HISTORY_EVENT_UPDATED,
+                &now,
+                &updated_snapshot.company_name,
+                &updated_snapshot.role_title,
+                None,
+                Some(updated_snapshot.status.clone()),
+                Some(details),
+                Some(&updated_snapshot),
+            )
+            .await?;
+        }
+
+        if previous_snapshot.status != updated_snapshot.status {
+            self.insert_application_history_event(
+                &input.application_id,
+                HISTORY_EVENT_STATUS_CHANGED,
+                &now,
+                &updated_snapshot.company_name,
+                &updated_snapshot.role_title,
+                Some(previous_snapshot.status),
+                Some(updated_snapshot.status.clone()),
+                None,
+                Some(&updated_snapshot),
+            )
+            .await?;
+        }
+
+        Ok(updated_list_item)
     }
 
     pub async fn delete_tracked_application(&self, application_id: &str) -> AppResult<()> {
+        let list_item = self.get_application_list_item(application_id).await?;
+        let snapshot = application_list_item_to_history_snapshot(&list_item);
         let current = sqlx::query(
             r#"
             SELECT
@@ -556,6 +642,19 @@ impl Database {
 
         self.delete_search_document(ENTITY_APPLICATION, application_id)
             .await?;
+
+        self.insert_application_history_event(
+            application_id,
+            HISTORY_EVENT_DELETED,
+            &now_utc(),
+            &snapshot.company_name,
+            &snapshot.role_title,
+            Some(snapshot.status.clone()),
+            None,
+            None,
+            Some(&snapshot),
+        )
+        .await?;
 
         sqlx::query("DELETE FROM applications WHERE id = ?")
             .bind(application_id)
@@ -861,6 +960,63 @@ impl Database {
         Ok(groups)
     }
 
+    pub async fn list_application_history(&self) -> AppResult<Vec<ApplicationHistoryEvent>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id,
+                application_id,
+                event_type,
+                occurred_at,
+                company_name,
+                role_title,
+                status_from,
+                status_to,
+                details_json,
+                snapshot_json
+            FROM application_history_events
+            ORDER BY
+                occurred_at DESC,
+                application_id ASC,
+                CASE event_type
+                    WHEN 'deleted' THEN 0
+                    WHEN 'updated' THEN 1
+                    WHEN 'status_changed' THEN 2
+                    WHEN 'created' THEN 3
+                    ELSE 4
+                END ASC,
+                id DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|row| {
+                let snapshot = row
+                    .get::<Option<String>, _>("snapshot_json")
+                    .map(|value| serde_json::from_str::<ApplicationHistorySnapshot>(&value))
+                    .transpose()
+                    .map_err(|err| {
+                        AppError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+                    })?;
+
+                Ok(ApplicationHistoryEvent {
+                    id: row.get("id"),
+                    application_id: row.get("application_id"),
+                    event_type: row.get("event_type"),
+                    occurred_at: row.get("occurred_at"),
+                    company_name: row.get("company_name"),
+                    role_title: row.get("role_title"),
+                    status_from: row.get("status_from"),
+                    status_to: row.get("status_to"),
+                    details: row.get("details_json"),
+                    snapshot,
+                })
+            })
+            .collect()
+    }
+
     pub async fn get_app_settings(&self) -> AppResult<AppSettings> {
         let row =
             sqlx::query("SELECT preferred_currency, updated_at FROM app_settings WHERE id = 1")
@@ -906,6 +1062,7 @@ impl Database {
 
         for statement in [
             "DELETE FROM application_contacts",
+            "DELETE FROM application_history_events",
             "DELETE FROM attachments",
             "DELETE FROM tasks",
             "DELETE FROM stage_events",
@@ -1103,6 +1260,38 @@ impl Database {
             })
             .collect();
 
+        let history_rows = sqlx::query(
+            "SELECT id, application_id, event_type, occurred_at, company_name, role_title, status_from, status_to, details_json, snapshot_json FROM application_history_events"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let application_history_events = history_rows
+            .into_iter()
+            .map(|row| {
+                let snapshot = row
+                    .get::<Option<String>, _>("snapshot_json")
+                    .map(|value| serde_json::from_str::<ApplicationHistorySnapshot>(&value))
+                    .transpose()
+                    .map_err(|err| {
+                        AppError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+                    })?;
+
+                Ok(crate::models::ApplicationHistoryEvent {
+                    id: row.get("id"),
+                    application_id: row.get("application_id"),
+                    event_type: row.get("event_type"),
+                    occurred_at: row.get("occurred_at"),
+                    company_name: row.get("company_name"),
+                    role_title: row.get("role_title"),
+                    status_from: row.get("status_from"),
+                    status_to: row.get("status_to"),
+                    details: row.get("details_json"),
+                    snapshot,
+                })
+            })
+            .collect::<AppResult<Vec<_>>>()?;
+
         let app_settings = self.get_app_settings().await?;
 
         Ok(crate::models::ExportData {
@@ -1114,6 +1303,7 @@ impl Database {
             tasks,
             attachments,
             stage_events,
+            application_history_events,
             app_settings,
             export_version: "1.0".to_owned(),
             exported_at: now,
@@ -1130,6 +1320,7 @@ impl Database {
         // Clear all data in dependency order
         for statement in [
             "DELETE FROM application_contacts",
+            "DELETE FROM application_history_events",
             "DELETE FROM attachments",
             "DELETE FROM tasks",
             "DELETE FROM stage_events",
@@ -1285,6 +1476,35 @@ impl Database {
             .await?;
         }
 
+        if let Some(history_events) = &data.application_history_events {
+            for event in history_events {
+                let snapshot_json = event
+                    .snapshot
+                    .as_ref()
+                    .map(serde_json::to_string)
+                    .transpose()
+                    .map_err(|err| {
+                        AppError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+                    })?;
+
+                sqlx::query(
+                    "INSERT INTO application_history_events (id, application_id, event_type, occurred_at, company_name, role_title, status_from, status_to, details_json, snapshot_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                )
+                .bind(&event.id)
+                .bind(&event.application_id)
+                .bind(&event.event_type)
+                .bind(&event.occurred_at)
+                .bind(&event.company_name)
+                .bind(&event.role_title)
+                .bind(&event.status_from)
+                .bind(&event.status_to)
+                .bind(&event.details)
+                .bind(snapshot_json)
+                .execute(&mut *transaction)
+                .await?;
+            }
+        }
+
         // Insert or update app settings
         if let Some(settings) = &data.app_settings {
             sqlx::query(
@@ -1304,10 +1524,22 @@ impl Database {
             .await?;
         }
 
+        let should_backfill_history = data.application_history_events.is_none();
+
         transaction.commit().await?;
+
+        if should_backfill_history {
+            self.backfill_application_history().await?;
+        }
 
         // Return the imported data
         let app_settings = self.get_app_settings().await?;
+        let application_history_events = if should_backfill_history {
+            self.list_application_history().await?
+        } else {
+            data.application_history_events.clone().unwrap_or_default()
+        };
+
         Ok(crate::models::ExportData {
             companies: data.companies,
             roles: data.roles,
@@ -1317,6 +1549,7 @@ impl Database {
             tasks: data.tasks,
             attachments: data.attachments,
             stage_events: data.stage_events,
+            application_history_events,
             app_settings,
             export_version: "1.0".to_owned(),
             exported_at: now,
@@ -1764,6 +1997,142 @@ impl Database {
 
         Ok(())
     }
+
+    async fn insert_application_history_event(
+        &self,
+        application_id: &str,
+        event_type: &str,
+        occurred_at: &str,
+        company_name: &str,
+        role_title: &str,
+        status_from: Option<String>,
+        status_to: Option<String>,
+        details: Option<&str>,
+        snapshot: Option<&ApplicationHistorySnapshot>,
+    ) -> AppResult<()> {
+        let snapshot_json = snapshot
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(|err| {
+                AppError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+            })?;
+
+        sqlx::query(
+            "INSERT INTO application_history_events (id, application_id, event_type, occurred_at, company_name, role_title, status_from, status_to, details_json, snapshot_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(new_id())
+        .bind(application_id)
+        .bind(event_type)
+        .bind(occurred_at)
+        .bind(company_name)
+        .bind(role_title)
+        .bind(status_from)
+        .bind(status_to)
+        .bind(details)
+        .bind(snapshot_json)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn backfill_application_history(&self) -> AppResult<()> {
+        let application_ids =
+            sqlx::query_scalar::<_, String>("SELECT id FROM applications ORDER BY created_at ASC")
+                .fetch_all(&self.pool)
+                .await?;
+
+        for application_id in application_ids {
+            let existing_count = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM application_history_events WHERE application_id = ?",
+            )
+            .bind(&application_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+            if existing_count > 0 {
+                continue;
+            }
+
+            self.backfill_application_history_for(&application_id).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn remove_legacy_backfilled_update_history(&self) -> AppResult<()> {
+        sqlx::query(
+            "DELETE FROM application_history_events WHERE event_type = ? AND details_json = ?",
+        )
+        .bind(HISTORY_EVENT_UPDATED)
+        .bind(HISTORY_DETAIL_LEGACY_BACKFILLED_UPDATE)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn backfill_application_history_for(&self, application_id: &str) -> AppResult<()> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                a.created_at,
+                a.updated_at
+            FROM applications a
+            WHERE a.id = ?
+            "#,
+        )
+        .bind(application_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let list_item = self.get_application_list_item(application_id).await?;
+        let snapshot = application_list_item_to_history_snapshot(&list_item);
+        let created_at: String = row.get("created_at");
+
+        self.insert_application_history_event(
+            application_id,
+            HISTORY_EVENT_CREATED,
+            &created_at,
+            &snapshot.company_name,
+            &snapshot.role_title,
+            None,
+            Some(snapshot.status.clone()),
+            Some(HISTORY_DETAIL_BACKFILLED_CREATE),
+            Some(&snapshot),
+        )
+        .await?;
+
+        let stage_rows = sqlx::query(
+            "SELECT from_status, to_status, changed_at FROM stage_events WHERE application_id = ? ORDER BY changed_at ASC, id ASC",
+        )
+        .bind(application_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        for stage_row in stage_rows {
+            let from_status = stage_row.get::<Option<String>, _>("from_status");
+
+            if from_status.is_none() {
+                continue;
+            }
+
+            self.insert_application_history_event(
+                application_id,
+                HISTORY_EVENT_STATUS_CHANGED,
+                &stage_row.get::<String, _>("changed_at"),
+                &snapshot.company_name,
+                &snapshot.role_title,
+                from_status,
+                Some(stage_row.get("to_status")),
+                Some(HISTORY_DETAIL_BACKFILLED_STATUS),
+                Some(&snapshot),
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
 }
 
 fn map_application_list_item(
@@ -1788,6 +2157,85 @@ fn map_application_list_item(
         updated_at: row.get("updated_at"),
         archived_at: row.get("archived_at"),
     }
+}
+
+fn application_list_item_to_history_snapshot(
+    application: &ApplicationListItem,
+) -> ApplicationHistorySnapshot {
+    ApplicationHistorySnapshot {
+        company_name: application.company_name.clone(),
+        role_title: application.role_title.clone(),
+        job_post_url: application.job_post_url.clone(),
+        application_source: application.application_source.clone(),
+        salary_expectation: application.salary_expectation.clone(),
+        salary_offer: application.salary_offer.clone(),
+        status: application.status.clone(),
+        applied_at: application.applied_at.clone(),
+        first_response_at: application.first_response_at.clone(),
+        notes: application.notes.clone(),
+        attachments: application.attachments.clone(),
+    }
+}
+
+fn summarize_history_update_changes(
+    previous: &ApplicationHistorySnapshot,
+    next: &ApplicationHistorySnapshot,
+) -> Option<String> {
+    let mut changed_fields = Vec::new();
+
+    if previous.company_name != next.company_name {
+        changed_fields.push("company");
+    }
+    if previous.role_title != next.role_title {
+        changed_fields.push("role");
+    }
+    if previous.job_post_url != next.job_post_url {
+        changed_fields.push("job post");
+    }
+    if previous.application_source != next.application_source {
+        changed_fields.push("source");
+    }
+    if previous.salary_expectation != next.salary_expectation {
+        changed_fields.push("salary expectation");
+    }
+    if previous.salary_offer != next.salary_offer {
+        changed_fields.push("salary offer");
+    }
+    if previous.applied_at != next.applied_at {
+        changed_fields.push("applied date");
+    }
+    if previous.first_response_at != next.first_response_at {
+        changed_fields.push("first response");
+    }
+    if previous.notes != next.notes {
+        changed_fields.push("notes");
+    }
+    if !history_attachments_equal(&previous.attachments, &next.attachments) {
+        changed_fields.push("attachments");
+    }
+
+    if changed_fields.is_empty() {
+        return None;
+    }
+
+    let preview = changed_fields.iter().take(3).copied().collect::<Vec<_>>();
+    let remaining_count = changed_fields.len().saturating_sub(preview.len());
+
+    Some(if remaining_count > 0 {
+        format!("Changed {} +{} more", preview.join(", "), remaining_count)
+    } else {
+        format!("Changed {}", preview.join(", "))
+    })
+}
+
+fn history_attachments_equal(previous: &[Attachment], next: &[Attachment]) -> bool {
+    previous.len() == next.len()
+        && previous.iter().zip(next.iter()).all(|(left, right)| {
+            left.kind == right.kind
+                && left.file_name == right.file_name
+                && left.file_path == right.file_path
+                && left.mime_type == right.mime_type
+        })
 }
 
 fn now_utc() -> String {
@@ -2279,6 +2727,133 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn application_history_tracks_lifecycle_events() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        let saved = db
+            .create_tracked_application(CreateTrackedApplicationInput {
+                job_post_url: "https://jobs.example.com/designer".to_owned(),
+                company_name: "Acme".to_owned(),
+                role_title: "Designer".to_owned(),
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
+                salary_expectation: Some("EUR 60k".to_owned()),
+                salary_offer: None,
+                status: Some(APPLICATION_STATUS_SAVED.to_owned()),
+                applied_at: None,
+                first_response_at: None,
+                notes: Some("Initial note".to_owned()),
+                attachments: vec![],
+            })
+            .await
+            .expect("saved application");
+
+        db.update_tracked_application(UpdateTrackedApplicationInput {
+            application_id: saved.id.clone(),
+            job_post_url: "https://jobs.example.com/senior-designer".to_owned(),
+            company_name: "Acme Labs".to_owned(),
+            role_title: "Senior Designer".to_owned(),
+            application_source: APPLICATION_SOURCE_INTERNAL_RECRUITER.to_owned(),
+            salary_expectation: Some("USD 80k".to_owned()),
+            salary_offer: Some("USD 90k".to_owned()),
+            status: APPLICATION_STATUS_INTERVIEW.to_owned(),
+            applied_at: Some("2026-04-10T00:00:00Z".to_owned()),
+            notes: Some("Updated note".to_owned()),
+            attachments: vec![],
+        })
+        .await
+        .expect("updated application");
+
+        db.delete_tracked_application(&saved.id)
+            .await
+            .expect("delete application");
+
+        let history = db
+            .list_application_history()
+            .await
+            .expect("list history");
+
+        assert_eq!(history.len(), 4);
+        assert_eq!(history[0].event_type, HISTORY_EVENT_DELETED);
+        assert_eq!(history[0].application_id, saved.id);
+        assert!(history[0].snapshot.is_some());
+        assert!(history[1..3]
+            .iter()
+            .any(|event| event.event_type == HISTORY_EVENT_STATUS_CHANGED));
+        assert!(history[1..3]
+            .iter()
+            .any(|event| event.event_type == HISTORY_EVENT_UPDATED));
+        assert_eq!(history[3].event_type, HISTORY_EVENT_CREATED);
+    }
+
+    #[tokio::test]
+    async fn application_history_backfills_existing_records() {
+        let temp_dir = tempdir().expect("temp dir");
+        let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
+            .await
+            .expect("db");
+
+        let saved = db
+            .create_tracked_application(CreateTrackedApplicationInput {
+                job_post_url: "https://jobs.example.com/frontend".to_owned(),
+                company_name: "Acme".to_owned(),
+                role_title: "Frontend Engineer".to_owned(),
+                application_source: Some(APPLICATION_SOURCE_DIRECT.to_owned()),
+                salary_expectation: None,
+                salary_offer: None,
+                status: Some(APPLICATION_STATUS_SAVED.to_owned()),
+                applied_at: None,
+                first_response_at: None,
+                notes: None,
+                attachments: vec![],
+            })
+            .await
+            .expect("saved application");
+
+        db.update_application_status(UpdateApplicationStatusInput {
+            application_id: saved.id.clone(),
+            status: APPLICATION_STATUS_APPLIED.to_owned(),
+            source: Some("user".to_owned()),
+        })
+        .await
+        .expect("status update");
+
+        sqlx::query("DELETE FROM application_history_events")
+            .execute(&db.pool)
+            .await
+            .expect("clear history");
+
+        db.backfill_application_history().await.expect("backfill history");
+
+        let history = db
+            .list_application_history()
+            .await
+            .expect("list history");
+        let application_history = history
+            .into_iter()
+            .filter(|event| event.application_id == saved.id)
+            .collect::<Vec<_>>();
+
+        assert_eq!(application_history.len(), 2);
+        assert!(application_history.iter().any(|event| {
+            event.application_id == saved.id
+                && event.event_type == HISTORY_EVENT_CREATED
+                && event.details.as_deref() == Some(HISTORY_DETAIL_BACKFILLED_CREATE)
+        }));
+        assert!(application_history.iter().any(|event| {
+            event.application_id == saved.id
+                && event.event_type == HISTORY_EVENT_STATUS_CHANGED
+                && event.status_from.as_deref() == Some(APPLICATION_STATUS_SAVED)
+                && event.status_to.as_deref() == Some(APPLICATION_STATUS_APPLIED)
+                && event.details.as_deref() == Some(HISTORY_DETAIL_BACKFILLED_STATUS)
+        }));
+        assert_eq!(application_history[0].event_type, HISTORY_EVENT_STATUS_CHANGED);
+        assert_eq!(application_history[1].event_type, HISTORY_EVENT_CREATED);
+    }
+
+    #[tokio::test]
     async fn export_app_data_includes_all_tables() {
         let temp_dir = tempdir().expect("temp dir");
         let db = Database::for_path(&temp_dir.path().join("jobnest.sqlite"))
@@ -2437,6 +3012,7 @@ mod tests {
                 tasks: vec![],
                 attachments: vec![],
                 stage_events: vec![],
+                application_history_events: None,
                 app_settings: None,
             })
             .await
@@ -2501,6 +3077,7 @@ mod tests {
             tasks: vec![],
             attachments: vec![],
             stage_events: vec![],
+            application_history_events: None,
             app_settings: None,
         })
         .await
@@ -2576,6 +3153,7 @@ mod tests {
             tasks: vec![],
             attachments: vec![],
             stage_events: vec![],
+            application_history_events: None,
             app_settings: None,
         })
         .await

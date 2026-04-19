@@ -23,6 +23,7 @@ export const commands = {
 } | null, limit: number | null, offset: number | null) => __TAURI_INVOKE<SearchResult[]>("search", { query, filters, limit, offset }),
 	reindexSearch: () => __TAURI_INVOKE<null>("reindex_search"),
 	listApplications: () => __TAURI_INVOKE<ApplicationStatusGroup[]>("list_applications"),
+	listApplicationHistory: () => __TAURI_INVOKE<ApplicationHistoryEvent[]>("list_application_history"),
 	getAppSettings: () => __TAURI_INVOKE<AppSettings>("get_app_settings"),
 	updateAppSettings: (input: UpdateAppSettingsInput) => __TAURI_INVOKE<AppSettings>("update_app_settings", { input }),
 	resetAppData: () => __TAURI_INVOKE<AppSettings>("reset_app_data"),
@@ -56,6 +57,33 @@ export type Application = {
 	archivedAt: string | null,
 	createdAt: string,
 	updatedAt: string,
+};
+
+export type ApplicationHistoryEvent = {
+	id: string,
+	applicationId: string,
+	eventType: string,
+	occurredAt: string,
+	companyName: string,
+	roleTitle: string,
+	statusFrom: string | null,
+	statusTo: string | null,
+	details: string | null,
+	snapshot: ApplicationHistorySnapshot | null,
+};
+
+export type ApplicationHistorySnapshot = {
+	companyName: string,
+	roleTitle: string,
+	jobPostUrl: string | null,
+	applicationSource: string,
+	salaryExpectation: string | null,
+	salaryOffer: string | null,
+	status: string,
+	appliedAt: string | null,
+	firstResponseAt: string | null,
+	notes: string | null,
+	attachments: Attachment[],
 };
 
 export type ApplicationListItem = {
@@ -193,6 +221,7 @@ export type ExportData = {
 	tasks: Task[],
 	attachments: Attachment[],
 	stage_events: StageEvent[],
+	application_history_events: ApplicationHistoryEvent[],
 	app_settings: AppSettings,
 	export_version: string,
 	exported_at: string,
@@ -207,6 +236,7 @@ export type ImportDataInput = {
 	tasks: Task[],
 	attachments: Attachment[],
 	stage_events: StageEvent[],
+	application_history_events: ApplicationHistoryEvent[] | null,
 	app_settings: AppSettings | null,
 };
 

@@ -3,10 +3,11 @@ use tauri::{AppHandle, State};
 use crate::{
     db::Database,
     models::{
-        AppSettings, Application, ApplicationListItem, ApplicationStatusGroup, Company, Contact,
-        CreateApplicationInput, CreateCompanyInput, CreateContactInput, CreateNoteInput,
-        CreateRoleInput, CreateTrackedApplicationInput, Note, Role, SearchFilters, SearchResult,
-        UpdateAppSettingsInput, UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
+        AppSettings, Application, ApplicationHistoryEvent, ApplicationListItem,
+        ApplicationStatusGroup, Company, Contact, CreateApplicationInput, CreateCompanyInput,
+        CreateContactInput, CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, Note,
+        Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
+        UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
     },
     AppState, AvailableUpdate,
 };
@@ -162,6 +163,18 @@ pub async fn list_applications(
     state
         .applications
         .list()
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn list_application_history(
+    state: State<'_, AppState>,
+) -> Result<Vec<ApplicationHistoryEvent>, String> {
+    state
+        .applications
+        .list_history()
         .await
         .map_err(|err| err.to_string())
 }

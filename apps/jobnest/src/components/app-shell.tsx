@@ -1,6 +1,12 @@
 "use client";
 
-import { IconPlus, IconSettings } from "@tabler/icons-react";
+import {
+  IconChartBar,
+  IconHistory,
+  IconLayoutKanban,
+  IconPlus,
+  IconSettings,
+} from "@tabler/icons-react";
 import { Button } from "@jobnest/ui";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -16,6 +22,9 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isSettingsPage = pathname.startsWith("/settings");
+  const isHistoryPage = pathname.startsWith("/history");
+  const isDashboardPage = pathname.startsWith("/dashboard");
+  const isApplicationsPage = !isSettingsPage && !isHistoryPage && !isDashboardPage;
 
   return (
     <div className="grid h-screen grid-cols-[16rem_minmax(0,1fr)] gap-2 bg-page p-2">
@@ -57,6 +66,38 @@ export function AppShell({ children }: AppShellProps) {
           <IconPlus aria-hidden="true" className="size-4" />
           Add application
         </Button>
+        <div className="mt-2 grid gap-1">
+          <Button
+            aria-current={isApplicationsPage ? "page" : undefined}
+            className="justify-start"
+            onClick={() => router.push("/")}
+            type="button"
+            variant={isApplicationsPage ? "secondary" : "ghost"}
+          >
+            <IconLayoutKanban aria-hidden="true" className="size-4" />
+            Applications
+          </Button>
+          <Button
+            aria-current={isDashboardPage ? "page" : undefined}
+            className="justify-start"
+            onClick={() => router.push("/dashboard")}
+            type="button"
+            variant={isDashboardPage ? "secondary" : "ghost"}
+          >
+            <IconChartBar aria-hidden="true" className="size-4" />
+            Dashboard
+          </Button>
+          <Button
+            aria-current={isHistoryPage ? "page" : undefined}
+            className="justify-start"
+            onClick={() => router.push("/history")}
+            type="button"
+            variant={isHistoryPage ? "secondary" : "ghost"}
+          >
+            <IconHistory aria-hidden="true" className="size-4" />
+            History
+          </Button>
+        </div>
         <UpdateNotice />
       </aside>
 
