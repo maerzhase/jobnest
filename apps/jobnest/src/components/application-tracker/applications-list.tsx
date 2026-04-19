@@ -18,7 +18,6 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ApplicationStatusGroup } from "../../lib/api/applications";
-import { formatDate } from "../../lib/date";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import {
   STATUS_OPTIONS,
@@ -26,6 +25,10 @@ import {
 } from "../../lib/status";
 import { ApplicationCard, ApplicationCardDragPreview } from "./application-card";
 import { ApplicationStatusBadge } from "./application-status-badge";
+import {
+  getApplicationTimelineLabel,
+  getSearchQueryState,
+} from "./helpers";
 import { KanbanColumn } from "./kanban-column";
 import { useApplicationSearch } from "./search-context";
 import { trackerPanelClass } from "./styles";
@@ -53,22 +56,6 @@ function asApplicationStatus(status: string): ApplicationStatus | null {
     : null;
 }
 
-function getTimelineLabel(application: ApplicationListItem): string {
-  if (application.firstResponseAt) {
-    if (application.appliedAt) {
-      return `Applied ${formatDate(application.appliedAt)} · First answer ${formatDate(application.firstResponseAt)}`;
-    }
-
-    return `First answer ${formatDate(application.firstResponseAt)}`;
-  }
-
-  if (application.appliedAt) {
-    return `Applied ${formatDate(application.appliedAt)}`;
-  }
-
-  return `Saved ${formatDate(application.updatedAt)}`;
-}
-
 function matchesApplicationSearch(
   application: ApplicationListItem,
   normalizedSearchQuery: string
@@ -85,7 +72,7 @@ function matchesApplicationSearch(
     application.salaryExpectation,
     application.salaryOffer,
     application.jobPostUrl,
-    getTimelineLabel(application),
+    getApplicationTimelineLabel(application),
   ];
 
   return searchableFields.some((field) =>
@@ -152,9 +139,8 @@ export function ApplicationsList({
 }: ApplicationsListProps) {
   const { deferredSearchQuery } = useApplicationSearch();
   const searchQuery = deferredSearchQuery;
-  const trimmedSearchQuery = searchQuery.trim();
-  const normalizedSearchQuery = trimmedSearchQuery.toLocaleLowerCase();
-  const hasSearchQuery = normalizedSearchQuery.length > 0;
+  const { hasQuery: hasSearchQuery, normalizedQuery: normalizedSearchQuery, trimmedQuery: trimmedSearchQuery } =
+    getSearchQueryState(searchQuery);
   const applicationsById = useMemo(
     () =>
       new Map(

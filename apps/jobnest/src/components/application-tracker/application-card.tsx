@@ -4,9 +4,12 @@ import { memo, type ButtonHTMLAttributes } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconGripVertical } from "@tabler/icons-react";
-import { formatDate } from "../../lib/date";
 import type { ApplicationListItem } from "../../lib/form-mappers";
 import { ApplicationStatusBadge } from "./application-status-badge";
+import {
+  getApplicationTimelineLabel,
+  getSearchQueryState,
+} from "./helpers";
 import { HighlightedText } from "./highlighted-text";
 
 type ApplicationCardProps = {
@@ -22,22 +25,6 @@ type ApplicationCardProps = {
 type ApplicationCardContentProps = ApplicationCardProps & {
   dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>;
 };
-
-function getTimelineLabel(application: ApplicationListItem): string {
-  if (application.firstResponseAt) {
-    if (application.appliedAt) {
-      return `Applied ${formatDate(application.appliedAt)} · First answer ${formatDate(application.firstResponseAt)}`;
-    }
-
-    return `First answer ${formatDate(application.firstResponseAt)}`;
-  }
-
-  if (application.appliedAt) {
-    return `Applied ${formatDate(application.appliedAt)}`;
-  }
-
-  return `Saved ${formatDate(application.updatedAt)}`;
-}
 
 function ApplicationCardContent({
   application,
@@ -97,7 +84,7 @@ function ApplicationCardContent({
             <p className="line-clamp-1">
               <HighlightedText
                 query={searchQuery}
-                text={getTimelineLabel(application)}
+                text={getApplicationTimelineLabel(application)}
               />
             </p>
             {application.notes ? (
@@ -165,6 +152,7 @@ function ApplicationCardComponent({
   const style = {
     transform: CSS.Transform.toString(transform),
   };
+  const { hasQuery } = getSearchQueryState(searchQuery);
 
   return (
     <li
@@ -173,7 +161,7 @@ function ApplicationCardComponent({
       className={`group rounded-xl border border-border/70 bg-card shadow-[0_1px_0_rgba(255,255,255,0.5)_inset] hover:border-foreground/15 hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
         isSortableDragging || isDragging
           ? "opacity-50"
-          : searchQuery?.trim() && !isSearchMatch
+          : hasQuery && !isSearchMatch
             ? "opacity-45"
             : ""
       }`}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, type JSX } from "react";
+import { getSearchQueryState } from "./helpers";
 
 type HighlightedTextProps = {
   query?: string;
@@ -11,14 +12,13 @@ export function HighlightedText({
   query,
   text,
 }: HighlightedTextProps): JSX.Element {
-  const trimmedQuery = query?.trim();
+  const { hasQuery, normalizedQuery, trimmedQuery } = getSearchQueryState(query);
 
-  if (!trimmedQuery) {
+  if (!hasQuery) {
     return <>{text}</>;
   }
 
   const normalizedText = text.toLocaleLowerCase();
-  const normalizedQuery = trimmedQuery.toLocaleLowerCase();
   const fragments: JSX.Element[] = [];
   let searchStartIndex = 0;
   let matchIndex = normalizedText.indexOf(normalizedQuery);
