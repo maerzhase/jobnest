@@ -12,12 +12,13 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     QueryBuilder, Row, Sqlite, SqlitePool,
 };
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use thiserror::Error;
 use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 use uuid::Uuid;
 use zip::{write::SimpleFileOptions, CompressionMethod, ZipArchive, ZipWriter};
 
+use crate::app_storage_dir;
 use crate::models::{
     AppSettings, Application, ApplicationHistoryEvent, ApplicationHistorySnapshot,
     ApplicationListItem, ApplicationStatusGroup, Attachment, AttachmentInput,
@@ -43,7 +44,8 @@ const HISTORY_EVENT_CREATED: &str = "created";
 const HISTORY_EVENT_UPDATED: &str = "updated";
 const HISTORY_EVENT_STATUS_CHANGED: &str = "status_changed";
 const HISTORY_EVENT_DELETED: &str = "deleted";
-const HISTORY_DETAIL_BACKFILLED_CREATE: &str = "Inferred from existing application data when history tracking was added.";
+const HISTORY_DETAIL_BACKFILLED_CREATE: &str =
+    "Inferred from existing application data when history tracking was added.";
 const HISTORY_DETAIL_LEGACY_BACKFILLED_UPDATE: &str =
     "Inferred from timestamps on an existing application when history tracking was added.";
 const HISTORY_DETAIL_BACKFILLED_STATUS: &str =
@@ -115,11 +117,7 @@ struct ManagedAttachmentFile {
 
 impl Database {
     pub async fn new(app: &AppHandle) -> AppResult<Self> {
-        let app_data_dir = app
-            .path()
-            .app_data_dir()
-            .map_err(|_| AppError::MissingAppDataDir)?;
-        std::fs::create_dir_all(&app_data_dir)?;
+        let app_data_dir = app_storage_dir(app).map_err(|_| AppError::MissingAppDataDir)?;
 
         let db_path = app_data_dir.join("jobnest.sqlite");
         let attachments_dir = app_data_dir.join(ATTACHMENTS_DIR);
@@ -470,7 +468,9 @@ impl Database {
         &self,
         input: UpdateTrackedApplicationInput,
     ) -> AppResult<ApplicationListItem> {
-        let previous_list_item = self.get_application_list_item(&input.application_id).await?;
+        let previous_list_item = self
+            .get_application_list_item(&input.application_id)
+            .await?;
         let current = sqlx::query(
             r#"
             SELECT
@@ -613,7 +613,9 @@ impl Database {
         self.upsert_search_document_for_application(&input.application_id)
             .await?;
 
-        let updated_list_item = self.get_application_list_item(&input.application_id).await?;
+        let updated_list_item = self
+            .get_application_list_item(&input.application_id)
+            .await?;
         let updated_snapshot = application_list_item_to_history_snapshot(&updated_list_item);
         let previous_snapshot = application_list_item_to_history_snapshot(&previous_list_item);
         let update_details =
@@ -985,8 +987,9 @@ impl Database {
             .iter()
             .map(|row| row.get::<String, _>("id"))
             .collect::<Vec<_>>();
-        let mut attachments_by_application =
-            self.load_attachments_by_application(&application_ids).await?;
+        let mut attachments_by_application = self
+            .load_attachments_by_application(&application_ids)
+            .await?;
 
         let mut groups: Vec<ApplicationStatusGroup> = Vec::new();
 
@@ -1719,13 +1722,11 @@ impl Database {
                 continue;
             }
 
-            match self
-                .copy_attachment_to_managed_storage(
-                    &source_path,
-                    &attachment.id,
-                    Some(&attachment.file_name),
-                )
-            {
+            match self.copy_attachment_to_managed_storage(
+                &source_path,
+                &attachment.id,
+                Some(&attachment.file_name),
+            ) {
                 Ok(managed_path) => match self
                     .update_attachment_path_references(
                         &attachment.id,
@@ -1952,7 +1953,10 @@ impl Database {
         Ok(())
     }
 
-    async fn count_history_snapshot_attachment_references(&self, file_path: &str) -> AppResult<u32> {
+    async fn count_history_snapshot_attachment_references(
+        &self,
+        file_path: &str,
+    ) -> AppResult<u32> {
         let rows = sqlx::query(
             "SELECT snapshot_json FROM application_history_events WHERE snapshot_json IS NOT NULL",
         )
@@ -1988,8 +1992,12 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        self.rewrite_history_snapshot_attachment_path(application_id, old_file_path, &new_file_path)
-            .await?;
+        self.rewrite_history_snapshot_attachment_path(
+            application_id,
+            old_file_path,
+            &new_file_path,
+        )
+        .await?;
 
         Ok(())
     }
@@ -2387,7 +2395,10 @@ impl Database {
             .load_attachments_by_application(&[application_id.to_owned()])
             .await?;
 
-        Ok(map_application_list_item(&row, &mut attachments_by_application))
+        Ok(map_application_list_item(
+            &row,
+            &mut attachments_by_application,
+        ))
     }
 
     async fn load_attachments_by_application(
@@ -2437,12 +2448,11 @@ impl Database {
         application_id: &str,
         attachments: Vec<AttachmentInput>,
     ) -> AppResult<()> {
-        let existing_attachments = sqlx::query(
-            "SELECT id, file_path FROM attachments WHERE application_id = ?",
-        )
-        .bind(application_id)
-        .fetch_all(&self.pool)
-        .await?;
+        let existing_attachments =
+            sqlx::query("SELECT id, file_path FROM attachments WHERE application_id = ?")
+                .bind(application_id)
+                .fetch_all(&self.pool)
+                .await?;
         let managed_paths_to_cleanup = existing_attachments
             .into_iter()
             .map(|row| row.get::<String, _>("file_path"))
@@ -2570,7 +2580,8 @@ impl Database {
                 continue;
             }
 
-            self.backfill_application_history_for(&application_id).await?;
+            self.backfill_application_history_for(&application_id)
+                .await?;
         }
 
         Ok(())
@@ -2751,7 +2762,10 @@ fn resolve_import_attachment_path(
     referenced_archive_paths: &mut HashSet<String>,
     managed_files: &mut Vec<ManagedAttachmentFile>,
 ) -> AppResult<()> {
-    if attachment.file_path.starts_with(&format!("{ATTACHMENTS_DIR}/")) {
+    if attachment
+        .file_path
+        .starts_with(&format!("{ATTACHMENTS_DIR}/"))
+    {
         let archive_path = attachment.file_path.clone();
         let file_name = Path::new(&archive_path)
             .file_name()
@@ -2768,12 +2782,9 @@ fn resolve_import_attachment_path(
         if referenced_archive_paths.insert(archive_path.clone()) {
             managed_files.push(ManagedAttachmentFile {
                 final_path: final_path.clone(),
-                bytes: extracted_files
-                    .get(&archive_path)
-                    .cloned()
-                    .ok_or_else(|| AppError::InvalidBackup(format!(
-                        "missing bundled attachment: {archive_path}"
-                    )))?,
+                bytes: extracted_files.get(&archive_path).cloned().ok_or_else(|| {
+                    AppError::InvalidBackup(format!("missing bundled attachment: {archive_path}"))
+                })?,
             });
         }
 
@@ -3169,9 +3180,9 @@ mod tests {
         assert_eq!(saved.notes.as_deref(), Some("Strong portfolio match."));
         assert_eq!(saved.attachments.len(), 1);
         assert_eq!(saved.attachments[0].file_name, "resume.pdf");
-        assert!(saved.attachments[0].file_path.starts_with(
-            db.attachments_dir.to_string_lossy().as_ref()
-        ));
+        assert!(saved.attachments[0]
+            .file_path
+            .starts_with(db.attachments_dir.to_string_lossy().as_ref()));
         assert!(Path::new(&saved.attachments[0].file_path).exists());
 
         let applied = db
@@ -3545,9 +3556,14 @@ mod tests {
 
         let groups = db.list_applications_grouped().await.expect("groups");
         let attachment = &groups[0].applications[0].attachments[0];
-        assert!(attachment.file_path.starts_with(db.attachments_dir.to_string_lossy().as_ref()));
+        assert!(attachment
+            .file_path
+            .starts_with(db.attachments_dir.to_string_lossy().as_ref()));
         assert!(Path::new(&attachment.file_path).exists());
-        assert_eq!(fs::read_to_string(&attachment.file_path).expect("managed copy"), "legacy");
+        assert_eq!(
+            fs::read_to_string(&attachment.file_path).expect("managed copy"),
+            "legacy"
+        );
     }
 
     #[tokio::test]
@@ -3594,10 +3610,7 @@ mod tests {
             .await
             .expect("delete application");
 
-        let history = db
-            .list_application_history()
-            .await
-            .expect("list history");
+        let history = db.list_application_history().await.expect("list history");
 
         assert_eq!(history.len(), 4);
         assert_eq!(history[0].event_type, HISTORY_EVENT_DELETED);
@@ -3649,12 +3662,11 @@ mod tests {
             .await
             .expect("clear history");
 
-        db.backfill_application_history().await.expect("backfill history");
-
-        let history = db
-            .list_application_history()
+        db.backfill_application_history()
             .await
-            .expect("list history");
+            .expect("backfill history");
+
+        let history = db.list_application_history().await.expect("list history");
         let application_history = history
             .into_iter()
             .filter(|event| event.application_id == saved.id)
@@ -3673,7 +3685,10 @@ mod tests {
                 && event.status_to.as_deref() == Some(APPLICATION_STATUS_APPLIED)
                 && event.details.as_deref() == Some(HISTORY_DETAIL_BACKFILLED_STATUS)
         }));
-        assert_eq!(application_history[0].event_type, HISTORY_EVENT_STATUS_CHANGED);
+        assert_eq!(
+            application_history[0].event_type,
+            HISTORY_EVENT_STATUS_CHANGED
+        );
         assert_eq!(application_history[1].event_type, HISTORY_EVENT_CREATED);
     }
 

@@ -5,9 +5,9 @@ use crate::{
     models::{
         AppSettings, Application, ApplicationHistoryEvent, ApplicationListItem,
         ApplicationStatusGroup, AttachmentMigrationResult, AttachmentMigrationStatus, Company,
-        Contact, CreateApplicationInput, CreateCompanyInput, CreateContactInput,
-        CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, ExportBackupResult,
-        ImportBackupResult, Note, Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
+        Contact, CreateApplicationInput, CreateCompanyInput, CreateContactInput, CreateNoteInput,
+        CreateRoleInput, CreateTrackedApplicationInput, ExportBackupResult, ImportBackupResult,
+        Note, Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
         UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
     },
     AppState, AvailableUpdate,
