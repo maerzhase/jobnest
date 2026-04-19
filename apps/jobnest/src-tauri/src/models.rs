@@ -293,6 +293,20 @@ pub struct Attachment {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
+pub struct AttachmentMigrationStatus {
+    pub legacy_attachment_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachmentMigrationResult {
+    pub migrated_count: u32,
+    pub skipped_missing_count: u32,
+    pub failed_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct StageEvent {
     pub id: String,
     pub application_id: String,
@@ -330,4 +344,17 @@ pub struct ImportDataInput {
     pub stage_events: Vec<StageEvent>,
     pub application_history_events: Option<Vec<ApplicationHistoryEvent>>,
     pub app_settings: Option<AppSettings>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportBackupResult {
+    pub bundled_attachment_count: u32,
+    pub legacy_external_attachment_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportBackupResult {
+    pub legacy_external_attachment_count: u32,
 }

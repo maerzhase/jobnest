@@ -4,9 +4,10 @@ use crate::{
     db::Database,
     models::{
         AppSettings, Application, ApplicationHistoryEvent, ApplicationListItem,
-        ApplicationStatusGroup, Company, Contact, CreateApplicationInput, CreateCompanyInput,
-        CreateContactInput, CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, Note,
-        Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
+        ApplicationStatusGroup, AttachmentMigrationResult, AttachmentMigrationStatus, Company,
+        Contact, CreateApplicationInput, CreateCompanyInput, CreateContactInput,
+        CreateNoteInput, CreateRoleInput, CreateTrackedApplicationInput, ExportBackupResult,
+        ImportBackupResult, Note, Role, SearchFilters, SearchResult, UpdateAppSettingsInput,
         UpdateApplicationStatusInput, UpdateTrackedApplicationInput,
     },
     AppState, AvailableUpdate,
@@ -221,6 +222,56 @@ pub async fn import_app_data(
     state
         .settings
         .import(input)
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn export_backup(
+    file_path: String,
+    state: State<'_, AppState>,
+) -> Result<ExportBackupResult, String> {
+    state
+        .settings
+        .export_backup(file_path)
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn import_backup(
+    file_path: String,
+    state: State<'_, AppState>,
+) -> Result<ImportBackupResult, String> {
+    state
+        .settings
+        .import_backup(file_path)
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_attachment_migration_status(
+    state: State<'_, AppState>,
+) -> Result<AttachmentMigrationStatus, String> {
+    state
+        .settings
+        .attachment_migration_status()
+        .await
+        .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn migrate_legacy_attachments(
+    state: State<'_, AppState>,
+) -> Result<AttachmentMigrationResult, String> {
+    state
+        .settings
+        .migrate_legacy_attachments()
         .await
         .map_err(|err| err.to_string())
 }

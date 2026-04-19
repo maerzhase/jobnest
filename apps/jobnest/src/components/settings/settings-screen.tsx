@@ -1,7 +1,6 @@
 "use client";
 
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { startTransition, useCallback, useEffect, useState } from "react";
@@ -35,10 +34,25 @@ export function SettingsScreen() {
   const [isResetting, setIsResetting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isMigratingAttachments, setIsMigratingAttachments] = useState(false);
+  const [legacyAttachmentCount, setLegacyAttachmentCount] = useState(0);
 
   useEffect(() => {
     setIsThemeReady(true);
   }, []);
+
+  const loadAttachmentMigrationStatus = useCallback(async () => {
+    try {
+      const status = await appDataApi.getAttachmentMigrationStatus();
+      setLegacyAttachmentCount(status.legacyAttachmentCount);
+    } catch {
+      setLegacyAttachmentCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAttachmentMigrationStatus();
+  }, [loadAttachmentMigrationStatus]);
 
   const handleSectionChange = useCallback((section: SettingsSection) => {
     setActiveSection(section);
@@ -64,6 +78,7 @@ export function SettingsScreen() {
       setConfirmationInput("");
       setIsResetDialogOpen(false);
       setActiveSection("appearance");
+      setLegacyAttachmentCount(0);
       showSuccessToast({
         title: "Data reset",
         description: "Your local database and settings were reset.",
@@ -82,26 +97,41 @@ export function SettingsScreen() {
     setIsExporting(true);
 
     try {
-      const exportData = await appDataApi.export();
-      const dataStr = JSON.stringify(exportData, null, 2);
-
-      // Open save dialog
+      const now = new Date();
+      const timestamp = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0"),
+      ].join("-") +
+        "_" +
+        [
+          String(now.getHours()).padStart(2, "0"),
+          String(now.getMinutes()).padStart(2, "0"),
+          String(now.getSeconds()).padStart(2, "0"),
+        ].join("-");
       const filePath = await save({
-        defaultPath: `jobnest-backup-${new Date().toISOString().split("T")[0]}.json`,
+        defaultPath: `jobnest-backup-${timestamp}.zip`,
         filters: [
           {
-            name: "JSON",
-            extensions: ["json"],
+            name: "JobNest Backup",
+            extensions: ["zip"],
           },
         ],
       });
 
       if (filePath) {
-        await writeTextFile(filePath, dataStr);
-        showSuccessToast({
-          title: "Backup exported",
-          description: "Your data was saved to a JSON backup file.",
-        });
+        const result = await appDataApi.export(filePath);
+        if (result.legacyExternalAttachmentCount > 0) {
+          showWarningToast({
+            title: "Backup exported with linked files",
+            description: `${result.legacyExternalAttachmentCount} attachment${result.legacyExternalAttachmentCount === 1 ? "" : "s"} still point to external files and were not bundled. Migrate them to make future backups complete.`,
+          });
+        } else {
+          showSuccessToast({
+            title: "Backup exported",
+            description: "Your data was saved to a portable backup archive.",
+          });
+        }
       } else {
         showWarningToast({
           title: "Export canceled",
@@ -121,34 +151,87 @@ export function SettingsScreen() {
     }
   }, []);
 
-  const handleImport = useCallback(
-    async (file: File) => {
-      setIsImporting(true);
+  const handleImport = useCallback(async () => {
+    setIsImporting(true);
 
-      try {
-        const fileContent = await file.text();
-        const importData = JSON.parse(fileContent);
+    try {
+      const selectedPath = await open({
+        title: "Import backup",
+        multiple: false,
+        filters: [
+          {
+            name: "JobNest Backups",
+            extensions: ["zip", "json"],
+          },
+        ],
+      });
 
-        await appDataApi.import(importData);
-
-        startTransition(() => {
-          void loadSettings();
+      const filePath = Array.isArray(selectedPath) ? selectedPath[0] : selectedPath;
+      if (!filePath) {
+        showWarningToast({
+          title: "Import canceled",
+          description: "No backup file was selected.",
         });
+        return;
+      }
+
+      const result = await appDataApi.import(filePath);
+
+      startTransition(() => {
+        void loadSettings();
+      });
+      await loadAttachmentMigrationStatus();
+      if (result.legacyExternalAttachmentCount > 0) {
+        showWarningToast({
+          title: "Backup imported with linked files",
+          description: `${result.legacyExternalAttachmentCount} attachment${result.legacyExternalAttachmentCount === 1 ? "" : "s"} still rely on external file paths. Run attachment migration to make them portable.`,
+        });
+      } else {
         showSuccessToast({
           title: "Backup imported",
           description: "Your local data was restored from the backup.",
         });
-      } catch (err) {
-        showErrorToast({
-          title: "Could not import backup",
-          description: getErrorMessage(err),
-        });
-      } finally {
-        setIsImporting(false);
       }
-    },
-    [loadSettings]
-  );
+    } catch (err) {
+      showErrorToast({
+        title: "Could not import backup",
+        description: getErrorMessage(err),
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  }, [loadAttachmentMigrationStatus, loadSettings]);
+
+  const handleMigrateAttachments = useCallback(async () => {
+    setIsMigratingAttachments(true);
+
+    try {
+      const result = await appDataApi.migrateLegacyAttachments();
+      await loadAttachmentMigrationStatus();
+
+      if (result.failedCount > 0) {
+        showWarningToast({
+          title: "Attachment migration partially completed",
+          description: `Migrated ${result.migratedCount}, skipped ${result.skippedMissingCount} missing, and ${result.failedCount} failed.`,
+        });
+      } else {
+        showSuccessToast({
+          title: "Attachments migrated",
+          description:
+            result.skippedMissingCount > 0
+              ? `Migrated ${result.migratedCount} attachment${result.migratedCount === 1 ? "" : "s"} and skipped ${result.skippedMissingCount} missing file${result.skippedMissingCount === 1 ? "" : "s"}.`
+              : `Migrated ${result.migratedCount} attachment${result.migratedCount === 1 ? "" : "s"} into JobNest storage.`,
+        });
+      }
+    } catch (err) {
+      showErrorToast({
+        title: "Could not migrate attachments",
+        description: getErrorMessage(err),
+      });
+    } finally {
+      setIsMigratingAttachments(false);
+    }
+  }, [loadAttachmentMigrationStatus]);
 
   return (
     <>
@@ -210,12 +293,15 @@ export function SettingsScreen() {
               <DataManagement
                 onExport={handleExport}
                 onImport={handleImport}
+                onMigrateAttachments={handleMigrateAttachments}
                 onResetClick={() => {
                   setConfirmationInput("");
                   setIsResetDialogOpen(true);
                 }}
                 isExporting={isExporting}
                 isImporting={isImporting}
+                isMigratingAttachments={isMigratingAttachments}
+                legacyAttachmentCount={legacyAttachmentCount}
               />
             )}
           </div>

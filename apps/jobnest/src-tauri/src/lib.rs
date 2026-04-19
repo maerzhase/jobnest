@@ -154,6 +154,10 @@ pub fn run() {
             commands::reset_app_data,
             commands::export_app_data,
             commands::import_app_data,
+            commands::export_backup,
+            commands::import_backup,
+            commands::get_attachment_migration_status,
+            commands::migrate_legacy_attachments,
             commands::check_for_available_update,
             commands::run_interactive_update_check
         ]);
@@ -257,6 +261,10 @@ pub fn export_typescript_bindings() -> Result<(), Box<dyn std::error::Error>> {
             commands::reset_app_data,
             commands::export_app_data,
             commands::import_app_data,
+            commands::export_backup,
+            commands::import_backup,
+            commands::get_attachment_migration_status,
+            commands::migrate_legacy_attachments,
             commands::check_for_available_update,
             commands::run_interactive_update_check
         ])

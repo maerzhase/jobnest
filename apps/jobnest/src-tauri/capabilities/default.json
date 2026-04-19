@@ -10,6 +10,14 @@
     "dialog:allow-open",
     "fs:allow-write-text-file",
     "fs:allow-read-text-file",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "$APPDATA/attachments/**"
+        }
+      ]
+    },
     "opener:allow-open-url",
     "opener:allow-default-urls"
   ]

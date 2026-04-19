@@ -498,9 +498,6 @@ export function ApplicationFormDialog({
                             <p className="truncate text-sm font-medium text-foreground">
                               {attachment.fileName}
                             </p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {attachment.filePath}
-                            </p>
                           </div>
                         </div>
 
