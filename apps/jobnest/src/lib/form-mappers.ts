@@ -1,7 +1,7 @@
 /**
  * Form data mappers - convert between application models and form values
  */
-import type { ApplicationListItem } from "./api/bindings";
+import type { ApplicationListItem, AttachmentInput } from "./api/bindings";
 import {
   DEFAULT_APPLICATION_SOURCE,
   normalizeApplicationSource,
@@ -25,6 +25,7 @@ export type CreateApplicationValues = {
   status: ApplicationStatus;
   appliedAt: string;
   notes: string;
+  attachments: AttachmentInput[];
 };
 
 export const formDefaults: CreateApplicationValues = {
@@ -39,6 +40,7 @@ export const formDefaults: CreateApplicationValues = {
   status: "saved",
   appliedAt: "",
   notes: "",
+  attachments: [],
 };
 
 export function getFormDefaults(
@@ -78,5 +80,11 @@ export function mapApplicationToFormValues(
     status: normalizeStatus(application.status),
     appliedAt: toDateInputValue(application.appliedAt),
     notes: application.notes ?? "",
+    attachments: application.attachments.map((attachment) => ({
+      kind: attachment.kind,
+      fileName: attachment.fileName,
+      filePath: attachment.filePath,
+      mimeType: attachment.mimeType,
+    })),
   };
 }

@@ -87,6 +87,12 @@ function ApplicationCardContent({
                 text={getApplicationTimelineLabel(application)}
               />
             </p>
+            {application.attachments.length > 0 ? (
+              <p className="line-clamp-1">
+                {application.attachments.length} attachment
+                {application.attachments.length === 1 ? "" : "s"}
+              </p>
+            ) : null}
             {application.notes ? (
               <p className="line-clamp-2">
                 <HighlightedText
