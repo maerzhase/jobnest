@@ -8,10 +8,10 @@ export const metadata: Metadata = {
   description:
     "A privacy-first job application tracker that keeps your data local.",
   icons: {
-    apple: "/icon-transparent.png",
+    apple: "/icon-256.png",
     icon: [
-      { rel: "icon", type: "image/png", url: "/icon-transparent.png" },
-      { rel: "shortcut icon", url: "/icon-transparent.png" },
+      { rel: "icon", type: "image/png", url: "/icon-256.png" },
+      { rel: "shortcut icon", url: "/icon-256.png" },
     ],
   },
 };

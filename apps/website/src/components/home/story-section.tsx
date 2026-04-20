@@ -1,4 +1,4 @@
-import { ScreenshotFrame } from "./shared";
+import { ScreenshotFrame, type ScreenshotName } from "./screenshot-frame";
 
 export function StorySection({
   body,
@@ -8,7 +8,7 @@ export function StorySection({
 }: {
   body: string;
   detail: string;
-  image: string;
+  image: ScreenshotName;
   title: string;
 }) {
   return (
