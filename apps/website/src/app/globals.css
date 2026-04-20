@@ -22,13 +22,19 @@
   body {
     min-height: 100vh;
     background: var(--page-background);
-    background-attachment: fixed;
+    background-attachment: scroll;
     color: var(--foreground);
     --muted-foreground: rgb(0 0 0 / 0.45);
   }
 
   .dark body {
     --muted-foreground: rgb(255 255 255 / 0.5);
+  }
+
+  @media (min-width: 48rem) {
+    body {
+      background-attachment: fixed;
+    }
   }
 
   a {
