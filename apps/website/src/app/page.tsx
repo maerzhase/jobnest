@@ -8,7 +8,6 @@ const DOWNLOAD_URL = `${REPO_URL}/releases/latest`;
 
 const storySections = [
   {
-    eyebrow: "Numbers that mean something",
     title: "Real KPIs for your job search.",
     body: "Application rate, response rate, interview conversion, time-in-stage — see how your search is actually going, on a dashboard that only you can see.",
     detail:
@@ -16,7 +15,6 @@ const storySections = [
     image: "mock-02",
   },
   {
-    eyebrow: "Yours to keep",
     title: "Own your search history.",
     body: "Search, filter, and revisit every conversation and note. Everything lives in a format you can export, back up, and walk away with whenever you want.",
     detail:
@@ -75,14 +73,16 @@ export default function Page() {
               JobNest keeps every application, note, and next step on your
               device — no account, no cloud, no tracking.
             </p>
-            <Button
-              className="shrink-0"
-              nativeButton={false}
-              // biome-ignore lint/a11y/useAnchorContent: base-ui render prop projects the Button's children
-              render={<a href={DOWNLOAD_URL} rel="noreferrer" target="_blank" />}
-            >
-              Download for macOS
-            </Button>
+            <div className="relative shrink-0">
+              <Button
+                nativeButton={false}
+                // biome-ignore lint/a11y/useAnchorContent: base-ui render prop projects the Button's children
+                render={<a href={DOWNLOAD_URL} rel="noreferrer" target="_blank" />}
+              >
+                Download for macOS
+              </Button>
+              <FreeBadge />
+            </div>
           </div>
         </div>
 
@@ -97,15 +97,17 @@ export default function Page() {
         <div className="rounded-[2rem] border border-border/70 bg-card/60 px-8 py-10 backdrop-blur-xl sm:px-12 sm:py-14">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="max-w-2xl space-y-4">
-              <p className="font-medium text-[11px] tracking-[0.28em] text-foreground/70 uppercase">
-                Get JobNest
-              </p>
               <h2 className="text-balance font-medium text-3xl text-foreground tracking-tight sm:text-4xl">
                 A job search tracker that stays on your side.
               </h2>
               <p className="text-balance font-light text-lg text-muted-foreground leading-relaxed">
-                Free, open source, and local-first. Install it once and own
-                every note you take from here on out.
+                Free and private, open source and local-first. Install it
+                once and own every note you take from here on out.
+              </p>
+              <p className="text-balance font-light text-muted-foreground text-sm leading-relaxed">
+                The core JobNest experience is free, forever. Optional paid
+                extras may arrive later, but tracking your job search will
+                always stay free.
               </p>
             </div>
             <div className="flex flex-col items-center gap-6">
@@ -118,13 +120,16 @@ export default function Page() {
                 width={112}
               />
               <div className="flex flex-wrap gap-3">
-                <Button
-                  nativeButton={false}
-                  // biome-ignore lint/a11y/useAnchorContent: base-ui render prop projects the Button's children
-                  render={<a href={DOWNLOAD_URL} rel="noreferrer" target="_blank" />}
-                >
-                  Download for macOS
-                </Button>
+                <div className="relative">
+                  <Button
+                    nativeButton={false}
+                    // biome-ignore lint/a11y/useAnchorContent: base-ui render prop projects the Button's children
+                    render={<a href={DOWNLOAD_URL} rel="noreferrer" target="_blank" />}
+                  >
+                    Download for macOS
+                  </Button>
+                  <FreeBadge />
+                </div>
                 <Button
                   nativeButton={false}
                   // biome-ignore lint/a11y/useAnchorContent: base-ui render prop projects the Button's children
@@ -137,6 +142,26 @@ export default function Page() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 pb-16 sm:px-8">
+        <aside className="rounded-2xl border border-border/60 bg-card/40 px-6 py-5 backdrop-blur-sm sm:px-7 sm:py-6">
+          <p className="font-medium text-foreground text-sm">
+            A small note before you download
+          </p>
+          <p className="pt-2 font-light text-muted-foreground text-sm leading-relaxed">
+            JobNest is in active early development and currently ships without
+            an Apple developer signature. The first time you open it, macOS
+            will ask you to confirm — head to{" "}
+            <span className="font-medium text-foreground">
+              System Settings → Privacy &amp; Security
+            </span>{" "}
+            and choose{" "}
+            <span className="font-medium text-foreground"> Open Anyway </span> to
+            let it through. We&apos;ll move to a fully signed build as soon as
+            we can.
+          </p>
+        </aside>
       </section>
 
       <footer className="mx-auto max-w-6xl px-6 pb-10 sm:px-8">
@@ -172,6 +197,14 @@ export default function Page() {
   );
 }
 
+function FreeBadge() {
+  return (
+    <span className="-top-2 -right-2 absolute rotate-6 rounded-full border border-foreground/15 bg-background px-2 py-0.5 font-medium text-[10px] text-foreground tracking-wider uppercase shadow-sm">
+      Free
+    </span>
+  );
+}
+
 function GitHubIcon() {
   return (
     <svg
@@ -204,38 +237,29 @@ function AmbientBackground() {
 function StorySection({
   body,
   detail,
-  eyebrow,
   image,
   title,
 }: {
   body: string;
   detail: string;
-  eyebrow: string;
   image: string;
   title: string;
 }) {
   return (
-    <section className="relative mx-auto max-w-6xl px-6 py-6 sm:px-8 lg:py-10">
-      <div className="grid gap-10 lg:min-h-[90svh] lg:grid-cols-[minmax(0,0.78fr)_minmax(460px,1fr)] lg:gap-16">
-        <div className="flex flex-col justify-center py-6 lg:py-12">
-          <article className="max-w-xl space-y-5">
-            <p className="font-medium text-[11px] tracking-[0.28em] text-foreground/70 uppercase">
-              {eyebrow}
-            </p>
-            <h3 className="text-balance font-medium text-3xl text-foreground tracking-tight sm:text-4xl lg:text-5xl">
-              {title}
-            </h3>
-            <p className="font-light text-lg text-foreground/85 leading-relaxed">{body}</p>
-            <p className="max-w-lg font-light text-base text-muted-foreground leading-relaxed">
-              {detail}
-            </p>
-          </article>
-        </div>
+    <section className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-28 sm:px-8 sm:py-36">
+      <article className="max-w-3xl space-y-5">
+        <h3 className="text-balance font-medium text-3xl text-foreground tracking-tight sm:text-4xl lg:text-5xl">
+          {title}
+        </h3>
+        <p className="font-light text-lg text-foreground/85 leading-relaxed">
+          {body}
+        </p>
+        <p className="max-w-2xl font-light text-base text-muted-foreground leading-relaxed">
+          {detail}
+        </p>
+      </article>
 
-        <div className="lg:sticky lg:top-24 lg:flex lg:min-h-[80svh] lg:items-center">
-          <ScreenshotFrame name={image} alt={title} />
-        </div>
-      </div>
+      <ScreenshotFrame name={image} alt={title} />
     </section>
   );
 }
