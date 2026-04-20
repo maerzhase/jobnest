@@ -12,25 +12,25 @@ export function SiteHeader({
   version: string;
 }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-30 border-border/60 border-b bg-background/75 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3 sm:px-8">
-        <div className="flex items-center gap-2.5">
+    <header className="fixed inset-x-0 top-0 z-30 border-border/60 border-b bg-background/80 backdrop-blur-md sm:backdrop-blur-xl">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:gap-4 sm:px-8 sm:py-3">
+        <div className="min-w-0 flex items-center gap-2.5">
           <Image
             alt="JobNest app icon"
-            className="size-7"
+            className="size-6 shrink-0 sm:size-7"
             height={28}
             priority
             src={iconImage}
             width={28}
           />
-          <p className="font-medium text-foreground text-sm tracking-tight">
+          <p className="truncate font-medium text-foreground text-sm tracking-tight">
             JobNest{" "}
-            <span className="font-light text-muted-foreground text-xs">
+            <span className="hidden font-light text-muted-foreground text-xs sm:inline">
               v{version}
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="shrink-0 flex items-center gap-0.5 sm:gap-1">
           <Button
             aria-label="Open the JobNest GitHub repository"
             nativeButton={false}
