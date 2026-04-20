@@ -1,4 +1,5 @@
 import Image from "next/image";
+import iconImage from "../../assets/home/icon.webp";
 import { ExternalButton, FreeBadge, GitHubIcon } from "./shared";
 
 export function ClosingSections({
@@ -33,7 +34,7 @@ export function ClosingSections({
                 aria-hidden
                 className="size-24 sm:size-28"
                 height={112}
-                src="/icon-transparent.png"
+                src={iconImage}
                 width={112}
               />
               <div className="flex flex-wrap gap-3">
