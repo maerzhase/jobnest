@@ -1,5 +1,11 @@
 # jobnest
 
+## 0.0.5
+
+### Patch Changes
+
+- cc5936e: Use Tabler icons for the app and website theme toggles, and update the website GitHub button to match.
+
 ## 0.0.4
 
 ### Patch Changes
