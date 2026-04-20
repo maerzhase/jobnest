@@ -30,7 +30,7 @@ export function HomePage() {
     <main className="relative min-h-screen overflow-x-clip">
       <AmbientBackground />
       <SiteHeader repoUrl={REPO_URL} version={JOBNEST_VERSION} />
-      <div aria-hidden className="h-14" />
+      <div aria-hidden className="h-12 sm:h-14" />
 
       <HeroSection downloadUrl={DOWNLOAD_URL} />
 
