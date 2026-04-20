@@ -4,9 +4,11 @@
 
 # JobNest
 
-JobNest is a privacy-first job application tracker built for people who want a simple way to manage their job search without handing their data to another SaaS.
+JobNest is a local-first, privacy-first job application tracker. No account, no cloud, no tracking — your application history, notes, pipeline, and follow-ups stay on your device.
 
-The core idea is straightforward: your application history, notes, company pipeline, and follow-up details should live on your device. JobNest is being built as a local-first desktop app with Tauri, so your data stays with you.
+Built as a desktop app with Tauri, JobNest is free and open source under the MIT license.
+
+➡️ [Download the latest release](https://github.com/maerzhase/jobnest/releases/latest)
 
 ## What We Are Building
 
@@ -30,18 +32,32 @@ This repo is a `pnpm` workspace powered by Turbo.
 
 - `apps/jobnest` - the main JobNest app built with Next.js and wrapped with Tauri
 - `apps/jobnest/src-tauri` - the Rust desktop shell and native app configuration
+- `apps/website` - the public marketing site for JobNest
 - `packages/ui` - shared UI components and styles
 
 ## Local-First Approach
 
-JobNest is being designed so that your data is stored locally on your machine instead of being sent to a hosted backend by default.
+JobNest stores all of your data locally on your machine. There is no hosted backend, no account, and no telemetry.
 
-That means the app can aim to offer:
+That means:
 
 - better privacy for sensitive job search data
 - direct ownership of your notes and application history
-- a simpler product surface without mandatory accounts
+- no signup — open the app and start tracking
 - a desktop experience that feels fast and focused
+
+## A Small Note Before You Install
+
+JobNest is in active early development and currently ships without an Apple developer signature. The first time you open it on macOS, the system will block it with a Gatekeeper warning.
+
+To allow it through:
+
+1. Try to open JobNest once (the warning will appear, that's expected).
+2. Open **System Settings → Privacy & Security**.
+3. Scroll to the **Security** section and choose **Open Anyway** next to the JobNest entry.
+4. Confirm with your password or Touch ID.
+
+We'll move to a fully signed and notarized build as soon as we land an Apple developer account.
 
 ## Getting Started
 
@@ -97,3 +113,7 @@ pnpm --filter jobnest tauri build
 ## Status
 
 JobNest is early in development. The foundation is in place for a privacy-first desktop tracker, and the next steps are shaping the product around a clean workflow for managing applications locally.
+
+## License
+
+JobNest is released under the [MIT License](./LICENSE).
