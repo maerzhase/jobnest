@@ -1,26 +1,23 @@
+import { IconBrandGithubFilled } from "@tabler/icons-react";
 import { Button } from "@jobnest/ui";
+import { cn } from "@jobnest/ui";
 
-export function FreeBadge() {
+export function FreeBadge({ className }: { className?: string }) {
   return (
-    <span className="-top-2 -right-2 absolute rotate-6 rounded-full border border-foreground/15 bg-background px-2 py-0.5 font-medium text-[10px] text-foreground tracking-wider uppercase shadow-sm">
+    <span
+      className={cn(
+        "absolute rounded-full border border-foreground/15 bg-background px-2 py-0.5 font-medium text-[10px] text-foreground tracking-wider uppercase shadow-sm",
+        "right-3 top-0 -translate-y-1/2 rotate-6 sm:-right-2 sm:-top-2 sm:translate-y-0",
+        className,
+      )}
+    >
       Free
     </span>
   );
 }
 
 export function GitHubIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="currentColor"
-      height="16"
-      viewBox="0 0 24 24"
-      width="16"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.24 3.34.95.1-.74.4-1.24.72-1.53-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.94 10.94 0 0 1 5.74 0c2.18-1.49 3.14-1.18 3.14-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.4-5.27 5.69.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56C20.22 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5Z" />
-    </svg>
-  );
+  return <IconBrandGithubFilled aria-hidden="true" size={16} />;
 }
 
 export function AmbientBackground() {
@@ -29,25 +26,28 @@ export function AmbientBackground() {
       aria-hidden
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
     >
-      <div className="absolute inset-x-0 top-[-10%] h-[55rem] bg-[radial-gradient(ellipse_at_top,_color-mix(in_srgb,_var(--foreground)_10%,_transparent),_transparent_60%)]" />
-      <div className="absolute left-[-15%] top-[40%] h-[50rem] w-[60rem] rounded-full bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_6%,_transparent),_transparent_65%)] blur-3xl" />
-      <div className="absolute right-[-10%] top-[75%] h-[55rem] w-[55rem] rounded-full bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_7%,_transparent),_transparent_65%)] blur-3xl" />
-      <div className="absolute inset-x-0 bottom-[-10%] h-[40rem] bg-[radial-gradient(ellipse_at_bottom,_color-mix(in_srgb,_var(--foreground)_6%,_transparent),_transparent_65%)]" />
+      <div className="absolute inset-x-0 top-[-4rem] h-[26rem] bg-[radial-gradient(ellipse_at_top,_color-mix(in_srgb,_var(--foreground)_8%,_transparent),_transparent_68%)] opacity-75 dark:opacity-40 sm:top-[-10%] sm:h-[55rem] sm:bg-[radial-gradient(ellipse_at_top,_color-mix(in_srgb,_var(--foreground)_10%,_transparent),_transparent_60%)] sm:opacity-100" />
+      <div className="absolute left-[-35%] top-[18rem] h-[22rem] w-[26rem] rounded-full bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_4%,_transparent),_transparent_68%)] blur-2xl opacity-80 dark:opacity-35 sm:left-[-15%] sm:top-[40%] sm:h-[50rem] sm:w-[60rem] sm:bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_6%,_transparent),_transparent_65%)] sm:blur-3xl sm:opacity-100" />
+      <div className="absolute right-[-45%] top-[34rem] h-[20rem] w-[24rem] rounded-full bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_4%,_transparent),_transparent_70%)] blur-2xl opacity-70 dark:opacity-30 sm:right-[-10%] sm:top-[75%] sm:h-[55rem] sm:w-[55rem] sm:bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_7%,_transparent),_transparent_65%)] sm:blur-3xl sm:opacity-100" />
+      <div className="absolute inset-x-0 bottom-[-2rem] h-[18rem] bg-[radial-gradient(ellipse_at_bottom,_color-mix(in_srgb,_var(--foreground)_4%,_transparent),_transparent_72%)] opacity-60 dark:opacity-30 sm:bottom-[-10%] sm:h-[40rem] sm:bg-[radial-gradient(ellipse_at_bottom,_color-mix(in_srgb,_var(--foreground)_6%,_transparent),_transparent_65%)] sm:opacity-100" />
     </div>
   );
 }
 
 export function ExternalButton({
   children,
+  className,
   href,
   variant,
 }: {
   children: React.ReactNode;
+  className?: string;
   href: string;
   variant?: React.ComponentProps<typeof Button>["variant"];
 }) {
   return (
     <Button
+      className={className}
       nativeButton={false}
       // biome-ignore lint/a11y/useAnchorContent: base-ui render prop projects the Button's children
       render={<a href={href} rel="noreferrer" target="_blank" />}

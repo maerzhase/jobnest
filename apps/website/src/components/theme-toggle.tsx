@@ -1,5 +1,6 @@
 "use client";
 
+import { IconMoonStars, IconSun } from "@tabler/icons-react";
 import { Button } from "@jobnest/ui";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -22,9 +23,11 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
     >
-      <span aria-hidden="true" className="text-sm leading-none">
-        {isDark ? "☀" : "☾"}
-      </span>
+      {isDark ? (
+        <IconSun aria-hidden="true" size={16} />
+      ) : (
+        <IconMoonStars aria-hidden="true" size={16} />
+      )}
     </Button>
   );
 }
