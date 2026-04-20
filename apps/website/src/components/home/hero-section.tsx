@@ -1,4 +1,5 @@
-import { FreeBadge, ExternalButton, ScreenshotFrame } from "./shared";
+import { ScreenshotFrame } from "./screenshot-frame";
+import { FreeBadge, ExternalButton } from "./shared";
 
 export function HeroSection({ downloadUrl }: { downloadUrl: string }) {
   return (
