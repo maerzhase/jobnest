@@ -1,5 +1,12 @@
 # website
 
+## 0.0.2
+
+### Patch Changes
+
+- 18aa0aa: Improve the website mobile layout with calmer background gradients, tighter spacing, and better small-screen alignment.
+- cc5936e: Use Tabler icons for the app and website theme toggles, and update the website GitHub button to match.
+
 ## 0.0.1
 
 ### Patch Changes
