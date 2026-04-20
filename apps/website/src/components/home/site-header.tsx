@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Button } from "@jobnest/ui";
+import iconImage from "../../assets/home/icon.webp";
 import { ThemeToggle } from "../theme-toggle";
 import { GitHubIcon } from "./shared";
 
@@ -19,7 +20,7 @@ export function SiteHeader({
             className="size-7"
             height={28}
             priority
-            src="/icon-transparent.png"
+            src={iconImage}
             width={28}
           />
           <p className="font-medium text-foreground text-sm tracking-tight">
