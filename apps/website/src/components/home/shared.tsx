@@ -1,5 +1,4 @@
 import { Button } from "@jobnest/ui";
-import Image from "next/image";
 
 export function FreeBadge() {
   return (
@@ -34,40 +33,6 @@ export function AmbientBackground() {
       <div className="absolute left-[-15%] top-[40%] h-[50rem] w-[60rem] rounded-full bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_6%,_transparent),_transparent_65%)] blur-3xl" />
       <div className="absolute right-[-10%] top-[75%] h-[55rem] w-[55rem] rounded-full bg-[radial-gradient(circle,_color-mix(in_srgb,_var(--foreground)_7%,_transparent),_transparent_65%)] blur-3xl" />
       <div className="absolute inset-x-0 bottom-[-10%] h-[40rem] bg-[radial-gradient(ellipse_at_bottom,_color-mix(in_srgb,_var(--foreground)_6%,_transparent),_transparent_65%)]" />
-    </div>
-  );
-}
-
-export function ScreenshotFrame({
-  alt,
-  name,
-  priority,
-}: {
-  alt: string;
-  name: string;
-  priority?: boolean;
-}) {
-  return (
-    <div className="relative [filter:drop-shadow(0_0_0.5px_rgb(0_0_0/0.18))_drop-shadow(0_18px_40px_rgb(0_0_0/0.12))_drop-shadow(0_4px_12px_rgb(0_0_0/0.08))] dark:[filter:drop-shadow(0_0_0.5px_rgb(255_255_255/0.25))_drop-shadow(0_18px_40px_rgb(0_0_0/0.45))_drop-shadow(0_4px_12px_rgb(0_0_0/0.35))]">
-      <Image
-        alt={alt}
-        className="h-auto w-full dark:hidden"
-        height={2112}
-        priority={priority}
-        sizes="(min-width: 1024px) 60vw, 100vw"
-        src={`/${name}-light.png`}
-        width={3248}
-      />
-      <Image
-        alt={alt}
-        aria-hidden
-        className="hidden h-auto w-full dark:block"
-        height={2112}
-        priority={priority}
-        sizes="(min-width: 1024px) 60vw, 100vw"
-        src={`/${name}.png`}
-        width={3248}
-      />
     </div>
   );
 }
