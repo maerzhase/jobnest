@@ -11,7 +11,7 @@ export function ClosingSections({
   return (
     <>
       <section className="mx-auto max-w-6xl px-6 py-16 sm:px-8 sm:py-20">
-        <div className="rounded-[2rem] border border-border/70 bg-card/60 px-8 py-10 backdrop-blur-xl sm:px-12 sm:py-14">
+        <div className="rounded-2xl border border-border/70 bg-card/60 px-8 py-10 backdrop-blur-xl sm:px-12 sm:py-14">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="max-w-2xl space-y-4">
               <h2 className="text-balance font-medium text-3xl text-foreground tracking-tight sm:text-4xl">
