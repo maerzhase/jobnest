@@ -109,6 +109,46 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.14.1)(jiti@2.6.1)(lightningcss@1.31.1)
 
+  apps/website:
+    dependencies:
+      '@jobnest/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      next:
+        specifier: 16.2.1
+        version: 16.2.1(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      react-dom:
+        specifier: 19.2.4
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: 4.2.1
+        version: 4.2.1
+      '@tsconfig/next':
+        specifier: 2.0.0
+        version: 2.0.0
+      '@types/node':
+        specifier: 22.14.1
+        version: 22.14.1
+      '@types/react':
+        specifier: 19.2.2
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.2)
+      tailwindcss:
+        specifier: 4.2.1
+        version: 4.2.1
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   packages/ui:
     dependencies:
       '@base-ui/react':

@@ -28,7 +28,7 @@
     "release": "pnpm build && changeset publish",
     "release:jobnest": "pnpm bundle:jobnest",
     "syncpack:fix": "syncpack fix && pnpm syncpack:format",
-    "syncpack:format": "syncpack format && pnpm exec biome format --write package.json packages/ui/package.json apps/web/package.json",
+    "syncpack:format": "syncpack format && pnpm exec biome format --write package.json packages/ui/package.json apps/web/package.json apps/website/package.json",
     "syncpack:lint": "syncpack lint",
     "typecheck": "turbo run typecheck",
     "version-packages": "changeset version && node scripts/sync-jobnest-version.mjs"
