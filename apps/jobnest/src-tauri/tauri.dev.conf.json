@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "jobnest_dev",
+  "identifier": "com.m3000.jobnest.dev",
+  "bundle": {
+    "macOS": {
+      "bundleName": "jobnest_dev"
+    }
+  }
+}
