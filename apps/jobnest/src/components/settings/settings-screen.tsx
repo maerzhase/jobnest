@@ -22,8 +22,15 @@ import { SettingsSidebar } from "./settings-sidebar";
 
 export function SettingsScreen() {
   const { resolvedTheme, setTheme, theme } = useTheme();
-  const { settings, isLoading, loadSettings, updateCurrency, isSavingCurrency } =
-    useSettings();
+  const {
+    settings,
+    isLoading,
+    loadSettings,
+    updateCurrency,
+    updateStaleApplicationDays,
+    isSavingCurrency,
+    isSavingStaleApplicationDays,
+  } = useSettings();
 
   const [activeSection, setActiveSection] = useState<SettingsSection>("appearance");
   const [isThemeReady, setIsThemeReady] = useState(false);
@@ -61,6 +68,13 @@ export function SettingsScreen() {
       await updateCurrency(nextCurrency);
     },
     [updateCurrency]
+  );
+
+  const handleStaleApplicationDaysChange = useCallback(
+    async (nextDays: number) => {
+      await updateStaleApplicationDays(nextDays);
+    },
+    [updateStaleApplicationDays]
   );
 
   const handleReset = useCallback(async () => {
@@ -264,8 +278,11 @@ export function SettingsScreen() {
             ) : activeSection === "applications" ? (
               <ApplicationsSettings
                 preferredCurrency={settings.preferredCurrency}
+                staleApplicationDays={settings.staleApplicationDays}
                 onCurrencyChange={handleCurrencyChange}
+                onStaleApplicationDaysChange={handleStaleApplicationDaysChange}
                 isSaving={isSavingCurrency}
+                isSavingStaleApplicationDays={isSavingStaleApplicationDays}
               />
             ) : (
               <DataManagement

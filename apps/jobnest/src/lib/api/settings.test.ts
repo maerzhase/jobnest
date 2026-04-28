@@ -46,6 +46,7 @@ describe("settingsApi", () => {
   it("loads settings through the generated bindings", async () => {
     const settings = {
       preferredCurrency: "EUR",
+      staleApplicationDays: 14,
       updatedAt: "2026-04-14T00:00:00Z",
     };
 
@@ -56,10 +57,11 @@ describe("settingsApi", () => {
   });
 
   it("updates settings through the generated bindings", async () => {
-    const input = { preferredCurrency: "USD" };
+    const input = { preferredCurrency: "USD", staleApplicationDays: 21 };
 
     updateAppSettingsMock.mockResolvedValue({
       preferredCurrency: "USD",
+      staleApplicationDays: 21,
       updatedAt: "2026-04-14T00:00:00Z",
     });
 
@@ -71,6 +73,7 @@ describe("settingsApi", () => {
   it("resets app data through the generated bindings", async () => {
     resetAppDataMock.mockResolvedValue({
       preferredCurrency: "EUR",
+      staleApplicationDays: 14,
       updatedAt: "2026-04-14T00:00:00Z",
     });
 
@@ -142,6 +145,7 @@ describe("appDataApi", () => {
       application_history_events: [],
       app_settings: {
         preferredCurrency: "EUR",
+        staleApplicationDays: 14,
         updatedAt: "2026-04-14T00:00:00Z",
       },
       export_version: "1",
@@ -179,6 +183,7 @@ describe("appDataApi", () => {
       application_history_events: [],
       app_settings: {
         preferredCurrency: "EUR",
+        staleApplicationDays: 14,
         updatedAt: "2026-04-14T00:00:00Z",
       },
       export_version: "1",

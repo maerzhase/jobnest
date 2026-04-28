@@ -425,6 +425,7 @@ function ApplicationTrackerContent() {
             }`}
         >
           <ApplicationsList
+            staleApplicationDays={settings?.staleApplicationDays}
             groups={applicationGroups}
             isLoading={isLoading}
             onEdit={openEditDialog}

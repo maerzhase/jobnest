@@ -64,7 +64,8 @@ export type DashboardMetrics = {
 export function buildDashboardMetrics(
   groups: ApplicationStatusGroup[],
   history: ApplicationHistoryEvent[],
-  now = new Date()
+  now = new Date(),
+  staleApplicationDays = 14
 ): DashboardMetrics {
   const applications = groups.flatMap((group) => group.applications);
   const totalApplications = applications.length;
@@ -77,7 +78,7 @@ export function buildDashboardMetrics(
     (application) => application.archivedAt !== null
   ).length;
   const staleApplications = applications.filter((application) =>
-    isStaleApplication(application, now)
+    isStaleApplication(application, staleApplicationDays, now)
   ).length;
 
   const lifecycleByApplication = groupHistoryByApplication(history);

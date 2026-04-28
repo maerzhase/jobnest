@@ -14,6 +14,7 @@ import {
   applicationsApi,
   type ApplicationHistoryEvent,
 } from "../../lib/api/applications";
+import { settingsApi } from "../../lib/api/settings";
 import { formatDateTime } from "../../lib/date";
 import { getErrorMessage } from "../../lib/error-handler";
 import { isStaleApplication } from "../../lib/stale-applications";
@@ -35,16 +36,19 @@ export function ApplicationHistoryScreen() {
     setIsLoading(true);
 
     try {
-      const [history, groups] = await Promise.all([
+      const [history, groups, settings] = await Promise.all([
         applicationsApi.listHistory(),
         applicationsApi.list(),
+        settingsApi.get(),
       ]);
       setEvents(history);
       setStaleApplicationIds(
         new Set(
           groups.flatMap((group) =>
             group.applications
-              .filter((application) => isStaleApplication(application))
+              .filter((application) =>
+                isStaleApplication(application, settings.staleApplicationDays)
+              )
               .map((application) => application.id)
           )
         )

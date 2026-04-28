@@ -44,6 +44,7 @@ export const commands = {
 /* Types */
 export type AppSettings = {
 	preferredCurrency: string,
+	staleApplicationDays: number,
 	updatedAt: string,
 };
 
@@ -324,6 +325,7 @@ export type Task = {
 
 export type UpdateAppSettingsInput = {
 	preferredCurrency: string,
+	staleApplicationDays: number,
 };
 
 export type UpdateApplicationStatusInput = {

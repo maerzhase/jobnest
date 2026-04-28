@@ -16,6 +16,7 @@ type KanbanColumnProps = {
   onEdit: (application: ApplicationListItem) => void;
   searchMatchesById: Map<string, boolean>;
   searchQuery: string;
+  staleApplicationDays?: number;
 };
 
 function KanbanColumnComponent({
@@ -25,6 +26,7 @@ function KanbanColumnComponent({
   onEdit,
   searchMatchesById,
   searchQuery,
+  staleApplicationDays,
 }: KanbanColumnProps) {
   const itemIds = useMemo(() => applications.map((app) => app.id), [applications]);
   const { setNodeRef, isOver } = useDroppable({
@@ -67,6 +69,7 @@ function KanbanColumnComponent({
                 searchQuery={searchQuery}
                 showDragHandle
                 showStatus={false}
+                staleApplicationDays={staleApplicationDays}
               />
             ))}
           </ul>

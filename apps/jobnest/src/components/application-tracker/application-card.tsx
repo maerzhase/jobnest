@@ -21,6 +21,7 @@ type ApplicationCardProps = {
   searchQuery?: string;
   showStatus?: boolean;
   showDragHandle?: boolean;
+  staleApplicationDays?: number;
 };
 
 type ApplicationCardContentProps = ApplicationCardProps & {
@@ -34,6 +35,7 @@ function ApplicationCardContent({
   showStatus = true,
   showDragHandle = false,
   dragHandleProps,
+  staleApplicationDays,
 }: ApplicationCardContentProps) {
   return (
     <div className="flex items-stretch">
@@ -85,7 +87,7 @@ function ApplicationCardContent({
             <p className="line-clamp-1">
               <HighlightedText
                 query={searchQuery}
-                text={getApplicationTimelineLabel(application)}
+                text={getApplicationTimelineLabel(application, staleApplicationDays)}
               />
             </p>
             {application.attachments.length > 0 ? (
@@ -141,8 +143,9 @@ function ApplicationCardComponent({
   searchQuery,
   showStatus = true,
   showDragHandle = false,
+  staleApplicationDays,
 }: ApplicationCardProps) {
-  const isStale = isStaleApplication(application);
+  const isStale = isStaleApplication(application, staleApplicationDays);
   const {
     attributes,
     listeners,
@@ -185,6 +188,7 @@ function ApplicationCardComponent({
         searchQuery={searchQuery}
         showDragHandle={showDragHandle}
         showStatus={showStatus}
+        staleApplicationDays={staleApplicationDays}
       />
     </li>
   );
@@ -195,8 +199,9 @@ export const ApplicationCard = memo(ApplicationCardComponent);
 export function ApplicationCardDragPreview({
   application,
   onEdit,
-}: Pick<ApplicationCardProps, "application" | "onEdit">) {
-  const isStale = isStaleApplication(application);
+  staleApplicationDays,
+}: Pick<ApplicationCardProps, "application" | "onEdit" | "staleApplicationDays">) {
+  const isStale = isStaleApplication(application, staleApplicationDays);
 
   return (
     <div
@@ -212,6 +217,7 @@ export function ApplicationCardDragPreview({
         searchQuery={undefined}
         showDragHandle
         showStatus={false}
+        staleApplicationDays={staleApplicationDays}
       />
     </div>
   );
