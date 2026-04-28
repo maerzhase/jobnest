@@ -14,25 +14,41 @@ import {
   applicationsApi,
   type ApplicationHistoryEvent,
 } from "../../lib/api/applications";
-import { ApplicationStatusBadge } from "../application-tracker/application-status-badge";
-import { HighlightedText } from "../application-tracker/highlighted-text";
-import { getSearchQueryState } from "../application-tracker/helpers";
 import { formatDateTime } from "../../lib/date";
 import { getErrorMessage } from "../../lib/error-handler";
+import { isStaleApplication } from "../../lib/stale-applications";
 import { showErrorToast } from "../../lib/toast";
+import { ApplicationStatusBadge } from "../application-tracker/application-status-badge";
+import { getSearchQueryState } from "../application-tracker/helpers";
+import { HighlightedText } from "../application-tracker/highlighted-text";
 
 export function ApplicationHistoryScreen() {
   const [events, setEvents] = useState<ApplicationHistoryEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [staleApplicationIds, setStaleApplicationIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const loadHistory = useCallback(async () => {
     setIsLoading(true);
 
     try {
-      const history = await applicationsApi.listHistory();
+      const [history, groups] = await Promise.all([
+        applicationsApi.listHistory(),
+        applicationsApi.list(),
+      ]);
       setEvents(history);
+      setStaleApplicationIds(
+        new Set(
+          groups.flatMap((group) =>
+            group.applications
+              .filter((application) => isStaleApplication(application))
+              .map((application) => application.id)
+          )
+        )
+      );
     } catch (error) {
       showErrorToast({
         title: "Could not load history",
@@ -61,21 +77,23 @@ export function ApplicationHistoryScreen() {
               A complete chronological log of application changes stored on this device.
             </p>
           </div>
-          <div className="relative w-full sm:max-w-xs lg:w-72">
-            <IconSearch
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              aria-label="Search history"
-              autoComplete="off"
-              className="pl-9"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search history"
-              size="sm"
-              type="search"
-              value={searchQuery}
-            />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="relative w-full sm:max-w-xs lg:w-72">
+              <IconSearch
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                aria-label="Search history"
+                autoComplete="off"
+                className="pl-9"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search history"
+                size="sm"
+                type="search"
+                value={searchQuery}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -150,12 +168,19 @@ export function ApplicationHistoryScreen() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-foreground">
-                        <HighlightedText
-                          query={deferredSearchQuery}
-                          text={event.companyName}
-                        />
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm text-foreground">
+                          <HighlightedText
+                            query={deferredSearchQuery}
+                            text={event.companyName}
+                          />
+                        </p>
+                        {staleApplicationIds.has(event.applicationId) ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-dashed border-foreground/20 bg-muted/35 px-2 py-0.5 text-[11px] font-medium tracking-[0.02em] text-foreground/70">
+                            Stale
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">
                         <HighlightedText
                           query={deferredSearchQuery}

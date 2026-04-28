@@ -7,6 +7,7 @@ import {
   APPLICATION_SOURCE_OPTIONS,
   type ApplicationSource,
 } from "../../lib/application-source";
+import { isStaleApplication } from "../../lib/stale-applications";
 import { STATUS_OPTIONS, type ApplicationStatus } from "../../lib/status";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -335,23 +336,6 @@ function getStatusReachedAt(
 
   const event = history.find((candidate) => candidate.statusTo === status);
   return toDate(event?.occurredAt ?? null);
-}
-
-function isStaleApplication(application: ApplicationListItem, now: Date): boolean {
-  if (application.archivedAt) {
-    return false;
-  }
-
-  if (application.status === "offer" || application.status === "rejected") {
-    return false;
-  }
-
-  const updatedAt = toDate(application.updatedAt);
-  if (!updatedAt) {
-    return false;
-  }
-
-  return now.getTime() - updatedAt.getTime() >= 14 * DAY_MS;
 }
 
 function getRate(count: number, total: number): number {

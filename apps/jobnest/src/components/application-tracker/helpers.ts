@@ -2,10 +2,15 @@
 
 import { formatDate } from "../../lib/date";
 import type { ApplicationListItem } from "../../lib/form-mappers";
+import { isStaleApplication } from "../../lib/stale-applications";
 
 export function getApplicationTimelineLabel(
   application: ApplicationListItem
 ): string {
+  if (isStaleApplication(application)) {
+    return `Stale · since ${formatDate(application.updatedAt)}`;
+  }
+
   if (application.firstResponseAt) {
     if (application.appliedAt) {
       return `Applied ${formatDate(application.appliedAt)} · First answer ${formatDate(application.firstResponseAt)}`;

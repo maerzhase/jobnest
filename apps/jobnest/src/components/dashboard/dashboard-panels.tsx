@@ -29,17 +29,23 @@ export function StatPanel({
   label,
   value,
   hint,
+  className,
+  iconClassName,
 }: {
   icon: Icon;
   label: string;
   value: string;
   hint: string;
+  className?: string;
+  iconClassName?: string;
 }) {
   return (
-    <DashboardSurface className="p-4">
+    <DashboardSurface className={`p-4 ${className ?? ""}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <DashboardInset className="flex h-9 w-9 items-center justify-center text-muted-foreground">
+        <DashboardInset
+          className={`flex h-9 w-9 items-center justify-center text-muted-foreground ${iconClassName ?? ""}`}
+        >
           <Icon aria-hidden="true" className="size-4" />
         </DashboardInset>
       </div>
