@@ -234,7 +234,7 @@ export function SettingsScreen() {
   return (
     <>
       <main className="flex min-h-full flex-col px-6 py-6 sm:px-8 sm:py-8">
-        <section className="grid gap-8 xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-12">
+        <section className="grid gap-8 xl:grid-cols-[190px_minmax(0,1fr)] xl:gap-10">
           <SettingsSidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
