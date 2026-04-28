@@ -5,9 +5,10 @@ import type { ApplicationListItem } from "../../lib/form-mappers";
 import { isStaleApplication } from "../../lib/stale-applications";
 
 export function getApplicationTimelineLabel(
-  application: ApplicationListItem
+  application: ApplicationListItem,
+  staleApplicationDays?: number
 ): string {
-  if (isStaleApplication(application)) {
+  if (isStaleApplication(application, staleApplicationDays)) {
     return `Stale · since ${formatDate(application.updatedAt)}`;
   }
 

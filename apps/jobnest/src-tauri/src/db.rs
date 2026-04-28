@@ -55,6 +55,7 @@ const ENTITY_CONTACT: &str = "contact";
 const ENTITY_NOTE: &str = "note";
 const ENTITY_ROLE: &str = "role";
 const DEFAULT_PREFERRED_CURRENCY: &str = "EUR";
+const DEFAULT_STALE_APPLICATION_DAYS: i64 = 14;
 const ATTACHMENTS_DIR: &str = "attachments";
 const BACKUP_JSON_PATH: &str = "backup.json";
 const BACKUP_EXPORT_VERSION: &str = "2.0";
@@ -1071,13 +1072,15 @@ impl Database {
     }
 
     pub async fn get_app_settings(&self) -> AppResult<AppSettings> {
-        let row =
-            sqlx::query("SELECT preferred_currency, updated_at FROM app_settings WHERE id = 1")
-                .fetch_one(&self.pool)
-                .await?;
+        let row = sqlx::query(
+            "SELECT preferred_currency, stale_application_days, updated_at FROM app_settings WHERE id = 1",
+        )
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(AppSettings {
             preferred_currency: row.get("preferred_currency"),
+            stale_application_days: row.get("stale_application_days"),
             updated_at: row.get("updated_at"),
         })
     }
@@ -1088,23 +1091,27 @@ impl Database {
     ) -> AppResult<AppSettings> {
         let now = now_utc();
         let preferred_currency = normalize_currency_code(&input.preferred_currency);
+        let stale_application_days = normalize_stale_application_days(input.stale_application_days);
 
         sqlx::query(
             r#"
-            INSERT INTO app_settings (id, preferred_currency, updated_at)
-            VALUES (1, ?, ?)
+            INSERT INTO app_settings (id, preferred_currency, stale_application_days, updated_at)
+            VALUES (1, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 preferred_currency = excluded.preferred_currency,
+                stale_application_days = excluded.stale_application_days,
                 updated_at = excluded.updated_at
             "#,
         )
         .bind(&preferred_currency)
+        .bind(stale_application_days)
         .bind(&now)
         .execute(&self.pool)
         .await?;
 
         Ok(AppSettings {
             preferred_currency,
+            stale_application_days,
             updated_at: now,
         })
     }
@@ -1132,9 +1139,10 @@ impl Database {
         }
 
         sqlx::query(
-            "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)",
+            "INSERT INTO app_settings (id, preferred_currency, stale_application_days, updated_at) VALUES (1, ?, ?, ?)",
         )
         .bind(DEFAULT_PREFERRED_CURRENCY)
+        .bind(DEFAULT_STALE_APPLICATION_DAYS)
         .bind(&now)
         .execute(&mut *transaction)
         .await?;
@@ -1144,6 +1152,7 @@ impl Database {
 
         Ok(AppSettings {
             preferred_currency: DEFAULT_PREFERRED_CURRENCY.to_owned(),
+            stale_application_days: DEFAULT_STALE_APPLICATION_DAYS,
             updated_at: now,
         })
     }
@@ -1563,17 +1572,19 @@ impl Database {
         // Insert or update app settings
         if let Some(settings) = &data.app_settings {
             sqlx::query(
-                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)",
+                "INSERT INTO app_settings (id, preferred_currency, stale_application_days, updated_at) VALUES (1, ?, ?, ?)",
             )
             .bind(&settings.preferred_currency)
+            .bind(normalize_stale_application_days(settings.stale_application_days))
             .bind(&settings.updated_at)
             .execute(&mut *transaction)
             .await?;
         } else {
             sqlx::query(
-                "INSERT INTO app_settings (id, preferred_currency, updated_at) VALUES (1, ?, ?)",
+                "INSERT INTO app_settings (id, preferred_currency, stale_application_days, updated_at) VALUES (1, ?, ?, ?)",
             )
             .bind(DEFAULT_PREFERRED_CURRENCY)
+            .bind(DEFAULT_STALE_APPLICATION_DAYS)
             .bind(&now)
             .execute(&mut *transaction)
             .await?;
@@ -2924,6 +2935,10 @@ fn normalize_currency_code(value: &str) -> String {
     }
 
     trimmed.to_ascii_uppercase()
+}
+
+fn normalize_stale_application_days(value: i64) -> i64 {
+    value.clamp(1, 365)
 }
 
 fn normalize_application_status(input: &str) -> AppResult<String> {

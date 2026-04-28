@@ -6,6 +6,7 @@ export const STALE_APPLICATION_AGE_DAYS = 14;
 
 export function isStaleApplication(
   application: ApplicationListItem,
+  staleApplicationDays = STALE_APPLICATION_AGE_DAYS,
   now = new Date()
 ): boolean {
   if (application.archivedAt) {
@@ -22,7 +23,7 @@ export function isStaleApplication(
   }
 
   return (
-    now.getTime() - updatedAt.getTime() >= STALE_APPLICATION_AGE_DAYS * DAY_MS
+    now.getTime() - updatedAt.getTime() >= staleApplicationDays * DAY_MS
   );
 }
 

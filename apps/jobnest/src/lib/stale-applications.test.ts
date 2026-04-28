@@ -23,6 +23,7 @@ describe("isStaleApplication", () => {
           updatedAt: "2026-04-14T12:00:00Z",
           archivedAt: null,
         },
+        14,
         now
       )
     ).toBe(true);
@@ -47,6 +48,7 @@ describe("isStaleApplication", () => {
           updatedAt: "2026-04-20T12:00:00Z",
           archivedAt: null,
         },
+        14,
         now
       )
     ).toBe(false);
@@ -69,6 +71,7 @@ describe("isStaleApplication", () => {
           updatedAt: "2026-04-01T00:00:00Z",
           archivedAt: "2026-04-10T00:00:00Z",
         },
+        14,
         now
       )
     ).toBe(false);
@@ -91,8 +94,34 @@ describe("isStaleApplication", () => {
           updatedAt: "2026-04-01T00:00:00Z",
           archivedAt: null,
         },
+        14,
         now
       )
     ).toBe(false);
+  });
+
+  it("supports a custom stale threshold in days", () => {
+    expect(
+      isStaleApplication(
+        {
+          id: "app_5",
+          companyName: "Lattice",
+          roleTitle: "Product Engineer",
+          jobPostUrl: null,
+          applicationSource: "referral",
+          salaryExpectation: null,
+          salaryOffer: null,
+          status: "applied",
+          appliedAt: "2026-04-20T00:00:00Z",
+          firstResponseAt: null,
+          notes: null,
+          attachments: [],
+          updatedAt: "2026-04-22T12:00:00Z",
+          archivedAt: null,
+        },
+        3,
+        now
+      )
+    ).toBe(true);
   });
 });
