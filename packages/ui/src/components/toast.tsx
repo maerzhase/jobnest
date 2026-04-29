@@ -18,7 +18,7 @@ function ToastViewportRenderer(): JSX.Element {
           <BaseToast.Root
             key={toast.id}
             className={cn(
-              "pointer-events-auto absolute right-0 bottom-0 left-0 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xl shadow-black/10 backdrop-blur-md transition-[transform,opacity,box-shadow] duration-200 ease-out",
+              "pointer-events-auto absolute right-0 bottom-0 left-0 overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl shadow-black/10 backdrop-blur-md transition-[transform,opacity,box-shadow] duration-200 ease-out",
               "[transform:translateY(calc(var(--toast-index)*-0.75rem))_scale(calc(1-(0.04*var(--toast-index))))]",
               "data-[expanded]:[transform:translateY(calc((var(--toast-offset-y)+((var(--toast-index))*0.5rem))*-1))]",
               "data-[ending-style]:opacity-0 data-[starting-style]:opacity-0",
