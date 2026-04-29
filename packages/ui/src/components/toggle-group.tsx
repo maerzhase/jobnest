@@ -26,10 +26,13 @@ const toggleGroupShellStyles: Record<ToggleGroupSize, string> = {
 };
 
 const toggleGroupItemStyles: Record<ToggleGroupSize, string> = {
-  sm: "h-7 min-w-7 rounded-[calc(theme(borderRadius.md)-2px)] px-2 text-xs",
-  md: "h-8 min-w-8 rounded-[calc(theme(borderRadius.md)-2px)] px-3 text-sm",
-  lg: "h-10 min-w-10 rounded-[calc(theme(borderRadius.md)-2px)] px-4 text-sm",
+  sm: "h-7 min-w-7 px-2 text-xs",
+  md: "h-8 min-w-8 px-3 text-sm",
+  lg: "h-10 min-w-10 px-4 text-sm",
 };
+
+const toggleGroupItemRadiusStyles =
+  "rounded-none first:rounded-l-[calc(theme(borderRadius.md)-2px)] last:rounded-r-[calc(theme(borderRadius.md)-2px)]";
 
 export interface ToggleGroupProps<Value extends string>
   extends Omit<
@@ -104,6 +107,7 @@ export function ToggleGroupItem<Value extends string>({
       className={cn(
         "inline-flex cursor-pointer items-center justify-center border border-transparent text-muted-foreground transition-[background-color,border-color,color,box-shadow] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 data-[pressed]:border-foreground data-[pressed]:bg-foreground data-[pressed]:text-background",
         toggleGroupItemStyles[size],
+        toggleGroupItemRadiusStyles,
         className,
       )}
     >

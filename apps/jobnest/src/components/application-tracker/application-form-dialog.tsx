@@ -488,7 +488,7 @@ export function ApplicationFormDialog({
                     attachments.map((attachment) => (
                       <div
                         key={attachment.filePath}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-3"
+                        className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-muted/30 px-3 py-3"
                       >
                         <div className="flex min-w-0 items-start gap-3">
                           <span className="mt-0.5 text-muted-foreground">
@@ -524,7 +524,7 @@ export function ApplicationFormDialog({
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-lg border border-dashed border-border/80 px-4 py-4 text-sm text-muted-foreground">
+                    <div className="rounded-md border border-dashed border-border/80 px-4 py-4 text-sm text-muted-foreground">
                       No files attached yet.
                     </div>
                   )}

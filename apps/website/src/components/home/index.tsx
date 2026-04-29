@@ -23,6 +23,13 @@ const storySections = [
       "No lock-in. No cloud dashboards to lose access to. Your record of the search is a file you control.",
     image: "mock-03",
   },
+  {
+    title: "Export your search as a report.",
+    body: "Pick what to include, filter your applications, and download a clean report whenever you need it.",
+    detail:
+      "A clean, shareable file — ready when it matters.",
+    image: "mock-04",
+  },
 ] as const;
 
 export function HomePage() {

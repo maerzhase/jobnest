@@ -24,7 +24,7 @@ export function DashboardLoadingState() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col">
       <DashboardHeader latestEventAt={null} />
-      <div className="m-4 rounded-2xl border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
+      <div className="m-4 rounded-md border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
         Building your dashboard…
       </div>
     </section>
@@ -33,7 +33,7 @@ export function DashboardLoadingState() {
 
 export function DashboardEmptyState() {
   return (
-    <div className="rounded-2xl border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground">
+    <div className="rounded-md border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground">
       Add a few applications and status updates to unlock charts and KPI trends here.
     </div>
   );
