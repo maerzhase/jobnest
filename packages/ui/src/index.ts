@@ -1,6 +1,8 @@
 export { cn } from "./lib/cn";
 export type { ButtonProps } from "./components/button";
 export { Button } from "./components/button";
+export type { CheckboxProps } from "./components/checkbox";
+export { Checkbox } from "./components/checkbox";
 export type {
   TabsIndicatorProps,
   TabsListProps,
