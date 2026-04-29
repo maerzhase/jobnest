@@ -1,5 +1,5 @@
 ---
-"jobnest": minor
+"jobnest": patch
 ---
 
 Add a new Reports tab for exporting application data.
