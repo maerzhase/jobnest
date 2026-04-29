@@ -34,6 +34,8 @@ import { useApplicationSearch } from "./search-context";
 import { trackerPanelClass } from "./styles";
 
 type ApplicationsListProps = {
+  emptyDescription?: string;
+  emptyTitle?: string;
   groups: ApplicationStatusGroup[];
   isLoading: boolean;
   onEdit: (application: ApplicationListItem) => void;
@@ -42,6 +44,7 @@ type ApplicationsListProps = {
     status: ApplicationStatus
   ) => Promise<void>;
   movingApplicationId: string | null;
+  staleApplicationDays?: number;
   viewMode: "list" | "kanban";
 };
 
@@ -58,7 +61,8 @@ function asApplicationStatus(status: string): ApplicationStatus | null {
 
 function matchesApplicationSearch(
   application: ApplicationListItem,
-  normalizedSearchQuery: string
+  normalizedSearchQuery: string,
+  staleApplicationDays?: number
 ): boolean {
   if (!normalizedSearchQuery) {
     return true;
@@ -72,7 +76,7 @@ function matchesApplicationSearch(
     application.salaryExpectation,
     application.salaryOffer,
     application.jobPostUrl,
-    getApplicationTimelineLabel(application),
+    getApplicationTimelineLabel(application, staleApplicationDays),
   ];
 
   return searchableFields.some((field) =>
@@ -130,11 +134,14 @@ function findContainer(
 }
 
 export function ApplicationsList({
+  emptyDescription,
+  emptyTitle,
   groups,
   isLoading,
   onEdit,
   onMoveToStatus,
   movingApplicationId,
+  staleApplicationDays,
   viewMode,
 }: ApplicationsListProps) {
   const { deferredSearchQuery } = useApplicationSearch();
@@ -156,11 +163,15 @@ export function ApplicationsList({
         groups.flatMap((group) =>
           group.applications.map((application) => [
             application.id,
-            matchesApplicationSearch(application, normalizedSearchQuery),
+            matchesApplicationSearch(
+              application,
+              normalizedSearchQuery,
+              staleApplicationDays
+            ),
           ] as const)
         )
       ),
-    [groups, normalizedSearchQuery]
+    [groups, normalizedSearchQuery, staleApplicationDays]
   );
   const sortedListGroups = useMemo(
     () =>
@@ -273,9 +284,10 @@ export function ApplicationsList({
   if (groups.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border px-5 py-10 text-center">
-        <p className="text-base font-medium">Nothing tracked yet</p>
+        <p className="text-base font-medium">{emptyTitle ?? "Nothing tracked yet"}</p>
         <p className="text-muted-foreground mt-2 text-sm">
-          Add your first application to start building your local history.
+          {emptyDescription ??
+            "Add your first application to start building your local history."}
         </p>
       </div>
     );
@@ -449,6 +461,7 @@ export function ApplicationsList({
             <ApplicationCardDragPreview
               application={dragPreviewApplication}
               onEdit={onEdit}
+              staleApplicationDays={staleApplicationDays}
             />
           </div>
         ) : null}
@@ -475,6 +488,7 @@ export function ApplicationsList({
                   onEdit={onEdit}
                   searchMatchesById={searchMatchesById}
                   searchQuery={trimmedSearchQuery}
+                  staleApplicationDays={staleApplicationDays}
                 />
               ))}
             </div>
@@ -552,6 +566,7 @@ export function ApplicationsList({
                     isSearchMatch={searchMatchesById.get(application.id) ?? true}
                     onEdit={onEdit}
                     searchQuery={trimmedSearchQuery}
+                    staleApplicationDays={staleApplicationDays}
                   />
                 ))}
               </ul>

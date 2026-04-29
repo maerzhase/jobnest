@@ -5,6 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconGripVertical } from "@tabler/icons-react";
 import type { ApplicationListItem } from "../../lib/form-mappers";
+import { isStaleApplication } from "../../lib/stale-applications";
 import { ApplicationStatusBadge } from "./application-status-badge";
 import {
   getApplicationTimelineLabel,
@@ -20,6 +21,7 @@ type ApplicationCardProps = {
   searchQuery?: string;
   showStatus?: boolean;
   showDragHandle?: boolean;
+  staleApplicationDays?: number;
 };
 
 type ApplicationCardContentProps = ApplicationCardProps & {
@@ -33,6 +35,7 @@ function ApplicationCardContent({
   showStatus = true,
   showDragHandle = false,
   dragHandleProps,
+  staleApplicationDays,
 }: ApplicationCardContentProps) {
   return (
     <div className="flex items-stretch">
@@ -43,7 +46,7 @@ function ApplicationCardContent({
           type="button"
         >
           {showStatus ? (
-            <div className="mb-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <ApplicationStatusBadge status={application.status} />
             </div>
           ) : null}
@@ -84,7 +87,7 @@ function ApplicationCardContent({
             <p className="line-clamp-1">
               <HighlightedText
                 query={searchQuery}
-                text={getApplicationTimelineLabel(application)}
+                text={getApplicationTimelineLabel(application, staleApplicationDays)}
               />
             </p>
             {application.attachments.length > 0 ? (
@@ -140,7 +143,9 @@ function ApplicationCardComponent({
   searchQuery,
   showStatus = true,
   showDragHandle = false,
+  staleApplicationDays,
 }: ApplicationCardProps) {
+  const isStale = isStaleApplication(application, staleApplicationDays);
   const {
     attributes,
     listeners,
@@ -164,7 +169,11 @@ function ApplicationCardComponent({
     <li
       ref={setNodeRef}
       style={style}
-      className={`group rounded-xl border border-border/70 bg-card shadow-[0_1px_0_rgba(255,255,255,0.5)_inset] hover:border-foreground/15 hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
+      className={`group rounded-md border bg-card shadow-[0_1px_0_rgba(255,255,255,0.5)_inset] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
+        isStale
+          ? "border-dashed border-foreground/20 bg-linear-to-br from-foreground/[0.035] via-card to-card hover:border-foreground/30"
+          : "border-border/70 hover:border-foreground/15"
+      } ${
         isSortableDragging || isDragging
           ? "opacity-50"
           : hasQuery && !isSearchMatch
@@ -179,6 +188,7 @@ function ApplicationCardComponent({
         searchQuery={searchQuery}
         showDragHandle={showDragHandle}
         showStatus={showStatus}
+        staleApplicationDays={staleApplicationDays}
       />
     </li>
   );
@@ -189,15 +199,25 @@ export const ApplicationCard = memo(ApplicationCardComponent);
 export function ApplicationCardDragPreview({
   application,
   onEdit,
-}: Pick<ApplicationCardProps, "application" | "onEdit">) {
+  staleApplicationDays,
+}: Pick<ApplicationCardProps, "application" | "onEdit" | "staleApplicationDays">) {
+  const isStale = isStaleApplication(application, staleApplicationDays);
+
   return (
-    <div className="rounded-xl border border-foreground/15 bg-card shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+    <div
+      className={`rounded-md border bg-card shadow-[0_18px_40px_rgba(0,0,0,0.18)] ${
+        isStale
+          ? "border-dashed border-foreground/22 bg-linear-to-br from-foreground/[0.04] via-card to-card"
+          : "border-foreground/15"
+      }`}
+    >
       <ApplicationCardContent
         application={application}
         onEdit={onEdit}
         searchQuery={undefined}
         showDragHandle
         showStatus={false}
+        staleApplicationDays={staleApplicationDays}
       />
     </div>
   );

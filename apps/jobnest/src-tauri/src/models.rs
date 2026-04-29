@@ -153,6 +153,7 @@ pub struct SearchFilters {
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub preferred_currency: String,
+    pub stale_application_days: i64,
     pub updated_at: String,
 }
 
@@ -264,6 +265,7 @@ pub struct AttachmentInput {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAppSettingsInput {
     pub preferred_currency: String,
+    pub stale_application_days: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
