@@ -24,10 +24,10 @@ const storySections = [
     image: "mock-03",
   },
   {
-    title: "Export reports on your terms.",
-    body: "Filter by date and status, pick the rows that matter, and export a clean CSV or Excel file in one click. Share it with a coach, attach it to an unemployment claim, or just keep it for yourself.",
+    title: "Export your search as a report.",
+    body: "Pick what to include, filter your applications, and download a clean report whenever you need it.",
     detail:
-      "You choose the rows. You choose the columns. The file is generated locally — nothing touches a server.",
+      "A clean, shareable file — ready when it matters.",
     image: "mock-04",
   },
 ] as const;
