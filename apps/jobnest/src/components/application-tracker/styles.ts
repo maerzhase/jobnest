@@ -1,2 +1,2 @@
 export const trackerPanelClass =
-  "rounded-xl border border-border/70 bg-black/[0.02] dark:bg-white/[0.03]";
+  "rounded-md border border-border/70 bg-black/[0.02] dark:bg-white/[0.03]";

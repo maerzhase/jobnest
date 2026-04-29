@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { applicationsApi } from "../../lib/api/applications";
+import { settingsApi } from "../../lib/api/settings";
 import { getErrorMessage } from "../../lib/error-handler";
 import { showErrorToast } from "../../lib/toast";
 import {
@@ -28,12 +29,20 @@ export function DashboardScreen() {
     setIsLoading(true);
 
     try {
-      const [groups, history] = await Promise.all([
+      const [groups, history, settings] = await Promise.all([
         applicationsApi.list(),
         applicationsApi.listHistory(),
+        settingsApi.get(),
       ]);
 
-      setMetrics(buildDashboardMetrics(groups, history));
+      setMetrics(
+        buildDashboardMetrics(
+          groups,
+          history,
+          new Date(),
+          settings.staleApplicationDays
+        )
+      );
     } catch (error) {
       showErrorToast({
         title: "Could not load dashboard",

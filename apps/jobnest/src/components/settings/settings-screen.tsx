@@ -22,8 +22,15 @@ import { SettingsSidebar } from "./settings-sidebar";
 
 export function SettingsScreen() {
   const { resolvedTheme, setTheme, theme } = useTheme();
-  const { settings, isLoading, loadSettings, updateCurrency, isSavingCurrency } =
-    useSettings();
+  const {
+    settings,
+    isLoading,
+    loadSettings,
+    updateCurrency,
+    updateStaleApplicationDays,
+    isSavingCurrency,
+    isSavingStaleApplicationDays,
+  } = useSettings();
 
   const [activeSection, setActiveSection] = useState<SettingsSection>("appearance");
   const [isThemeReady, setIsThemeReady] = useState(false);
@@ -61,6 +68,13 @@ export function SettingsScreen() {
       await updateCurrency(nextCurrency);
     },
     [updateCurrency]
+  );
+
+  const handleStaleApplicationDaysChange = useCallback(
+    async (nextDays: number) => {
+      await updateStaleApplicationDays(nextDays);
+    },
+    [updateStaleApplicationDays]
   );
 
   const handleReset = useCallback(async () => {
@@ -234,7 +248,7 @@ export function SettingsScreen() {
   return (
     <>
       <main className="flex min-h-full flex-col px-6 py-6 sm:px-8 sm:py-8">
-        <section className="grid gap-8 xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-12">
+        <section className="grid gap-8 xl:grid-cols-[190px_minmax(0,1fr)] xl:gap-10">
           <SettingsSidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
@@ -264,8 +278,11 @@ export function SettingsScreen() {
             ) : activeSection === "applications" ? (
               <ApplicationsSettings
                 preferredCurrency={settings.preferredCurrency}
+                staleApplicationDays={settings.staleApplicationDays}
                 onCurrencyChange={handleCurrencyChange}
+                onStaleApplicationDaysChange={handleStaleApplicationDaysChange}
                 isSaving={isSavingCurrency}
+                isSavingStaleApplicationDays={isSavingStaleApplicationDays}
               />
             ) : (
               <DataManagement

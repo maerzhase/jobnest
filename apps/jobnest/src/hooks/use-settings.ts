@@ -10,13 +10,17 @@ type UseSettingsReturn = {
   isLoading: boolean;
   loadSettings: () => Promise<void>;
   updateCurrency: (currency: string) => Promise<void>;
+  updateStaleApplicationDays: (days: number) => Promise<void>;
   isSavingCurrency: boolean;
+  isSavingStaleApplicationDays: boolean;
 };
 
 export function useSettings(): UseSettingsReturn {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
+  const [isSavingStaleApplicationDays, setIsSavingStaleApplicationDays] =
+    useState(false);
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -49,6 +53,7 @@ export function useSettings(): UseSettingsReturn {
       try {
         const updatedSettings = await settingsApi.update({
           preferredCurrency: nextCurrency,
+          staleApplicationDays: settings.staleApplicationDays,
         });
 
         startTransition(() => {
@@ -70,11 +75,46 @@ export function useSettings(): UseSettingsReturn {
     [settings]
   );
 
+  const updateStaleApplicationDays = useCallback(
+    async (nextDays: number) => {
+      if (!settings || nextDays === settings.staleApplicationDays) {
+        return;
+      }
+
+      setIsSavingStaleApplicationDays(true);
+
+      try {
+        const updatedSettings = await settingsApi.update({
+          preferredCurrency: settings.preferredCurrency,
+          staleApplicationDays: nextDays,
+        });
+
+        startTransition(() => {
+          setSettings(updatedSettings);
+        });
+        showSuccessToast({
+          title: "Settings updated",
+          description: "Stale application timing saved successfully.",
+        });
+      } catch (err) {
+        showErrorToast({
+          title: "Could not update settings",
+          description: getErrorMessage(err),
+        });
+      } finally {
+        setIsSavingStaleApplicationDays(false);
+      }
+    },
+    [settings]
+  );
+
   return {
     settings,
     isLoading,
     loadSettings,
     updateCurrency,
+    updateStaleApplicationDays,
     isSavingCurrency,
+    isSavingStaleApplicationDays,
   };
 }

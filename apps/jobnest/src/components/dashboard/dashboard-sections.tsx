@@ -34,6 +34,8 @@ export function DashboardOverviewStats({ metrics }: { metrics: DashboardMetrics 
       />
       <StatPanel
         icon={IconClockHour4}
+        className="border-dashed border-foreground/18 bg-linear-to-br from-foreground/[0.03] via-card to-card"
+        iconClassName="border border-dashed border-foreground/16 bg-muted/35"
         label="Stale applications"
         value={String(metrics.staleApplications)}
         hint="No activity in the last 14 days"
