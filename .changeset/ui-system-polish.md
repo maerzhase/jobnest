@@ -1,5 +1,5 @@
 ---
-"@jobnest/ui": minor
+"@jobnest/ui": patch
 ---
 
 Add Checkbox and Combobox components, and align border radius across the design system.
