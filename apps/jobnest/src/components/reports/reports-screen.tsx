@@ -222,9 +222,7 @@ export function ReportsScreen() {
                 return (
                   <li
                     key={app.id}
-                    role="row"
-                    aria-selected={isSelected}
-                    className="grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)_8rem_9rem_9rem] items-center gap-3 border-b border-border/50 px-4 py-3 last:border-b-0 hover:bg-muted/30"
+                    className={`grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)_8rem_9rem_9rem] items-center gap-3 border-b border-border/50 px-4 py-3 last:border-b-0 hover:bg-muted/30 ${isSelected ? "bg-muted/20" : ""}`}
                   >
                     <span className="flex items-center">
                       <Checkbox
