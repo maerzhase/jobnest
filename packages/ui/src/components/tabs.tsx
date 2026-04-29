@@ -131,7 +131,7 @@ export function TabsIndicator({
       className={cn(
         "pointer-events-none absolute left-[var(--active-tab-left)] top-[var(--active-tab-top)] z-0 transition-[top,left,width,height] duration-300 ease-out",
         variant === "surface" &&
-          "h-[var(--active-tab-height)] w-[var(--active-tab-width)] rounded-lg border border-border/80 bg-card shadow-sm",
+          "h-[var(--active-tab-height)] w-[var(--active-tab-width)] rounded-md border border-border/80 bg-card shadow-sm",
         variant === "indicator" &&
           "rounded-full border-0 bg-foreground shadow-none data-[orientation=horizontal]:h-0.5 data-[orientation=horizontal]:w-[var(--active-tab-width)] data-[orientation=horizontal]:translate-y-[calc(var(--active-tab-height)-0.125rem)] data-[orientation=vertical]:h-[var(--active-tab-height)] data-[orientation=vertical]:w-1 data-[orientation=vertical]:translate-x-1",
         className,
@@ -160,7 +160,7 @@ export function TabsTab({
     <BaseTabs.Tab
       {...props}
       className={cn(
-        "relative z-10 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-transparent font-medium text-muted-foreground outline-none transition-colors",
+        "relative z-10 inline-flex cursor-pointer items-center gap-2 rounded-md border border-transparent bg-transparent font-medium text-muted-foreground outline-none transition-colors",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         "aria-selected:text-foreground disabled:cursor-not-allowed disabled:opacity-60",
         variant === "surface" && "hover:text-foreground",

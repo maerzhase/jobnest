@@ -33,7 +33,7 @@ export function CollapsibleTriggerButton({
     <BaseCollapsible.Trigger
       {...props}
       className={cn(
-        "flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-4 py-3 text-left transition-colors data-[panel-open]:[&_svg]:rotate-180 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:transition-transform [&_svg]:duration-200",
+        "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-4 py-3 text-left transition-colors data-[panel-open]:[&_svg]:rotate-180 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:transition-transform [&_svg]:duration-200",
         className,
       )}
     >
