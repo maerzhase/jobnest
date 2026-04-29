@@ -110,7 +110,7 @@ export function UpdateNotice() {
   }
 
   return (
-    <section className="mt-auto rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-3 shadow-sm shadow-emerald-950/5">
+    <section className="mt-auto rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3 shadow-sm shadow-emerald-950/5">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-foreground">
           Update available
