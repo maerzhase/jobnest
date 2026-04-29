@@ -23,6 +23,13 @@ const storySections = [
       "No lock-in. No cloud dashboards to lose access to. Your record of the search is a file you control.",
     image: "mock-03",
   },
+  {
+    title: "Export reports on your terms.",
+    body: "Filter by date and status, pick the rows that matter, and export a clean CSV or Excel file in one click. Share it with a coach, attach it to an unemployment claim, or just keep it for yourself.",
+    detail:
+      "You choose the rows. You choose the columns. The file is generated locally — nothing touches a server.",
+    image: "mock-04",
+  },
 ] as const;
 
 export function HomePage() {
