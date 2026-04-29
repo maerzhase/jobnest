@@ -10,8 +10,10 @@ import mock02Dark from "../../assets/home/mock-02.png";
 import mock02Light from "../../assets/home/mock-02-light.png";
 import mock03Dark from "../../assets/home/mock-03.png";
 import mock03Light from "../../assets/home/mock-03-light.png";
+import mock04Dark from "../../assets/home/mock-04.png";
+import mock04Light from "../../assets/home/mock-04-light.png";
 
-export type ScreenshotName = "mock-01" | "mock-02" | "mock-03";
+export type ScreenshotName = "mock-01" | "mock-02" | "mock-03" | "mock-04";
 
 const screenshotVariants: Record<
   ScreenshotName,
@@ -20,6 +22,7 @@ const screenshotVariants: Record<
   "mock-01": { dark: mock01Dark, light: mock01Light },
   "mock-02": { dark: mock02Dark, light: mock02Light },
   "mock-03": { dark: mock03Dark, light: mock03Light },
+  "mock-04": { dark: mock04Dark, light: mock04Light },
 };
 
 export function ScreenshotFrame({

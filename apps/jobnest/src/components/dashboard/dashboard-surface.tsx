@@ -12,7 +12,7 @@ type DashboardInsetProps = {
 };
 
 const panelSurfaceClass =
-  "rounded-xl border border-border/70 bg-black/[0.02] dark:bg-white/[0.03]";
+  "rounded-md border border-border/70 bg-black/[0.02] dark:bg-white/[0.03]";
 
 export function DashboardSurface({
   children,
@@ -24,7 +24,7 @@ export function DashboardSurface({
 
 export function DashboardInset({ children, className }: DashboardInsetProps) {
   return (
-    <div className={cn("rounded-lg border border-border/60 bg-background/60", className)}>
+    <div className={cn("rounded-md border border-border/60 bg-background/60", className)}>
       {children}
     </div>
   );
