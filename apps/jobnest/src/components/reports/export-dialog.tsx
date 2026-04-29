@@ -131,27 +131,37 @@ export function ExportDialog({
               </span>
             </div>
             <div className="divide-y divide-border/50 rounded-md border border-border/70">
-              <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted/40">
+              <div className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40">
                 <Checkbox
+                  id="export-col-all"
                   checked={allColumnsSelected}
                   indeterminate={someColumnsSelected}
                   onCheckedChange={toggleAllColumns}
-                  aria-label="Toggle all columns"
                 />
-                <span className="text-sm font-medium text-foreground">All columns</span>
-              </label>
-              {EXPORT_COLUMNS.map((col) => (
                 <label
+                  htmlFor="export-col-all"
+                  className="cursor-pointer text-sm font-medium text-foreground"
+                >
+                  All columns
+                </label>
+              </div>
+              {EXPORT_COLUMNS.map((col) => (
+                <div
                   key={col.key}
-                  className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted/40"
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40"
                 >
                   <Checkbox
+                    id={`export-col-${col.key}`}
                     checked={selectedColumns.has(col.key)}
                     onCheckedChange={() => toggleColumn(col.key)}
-                    aria-label={col.label}
                   />
-                  <span className="text-sm text-foreground">{col.label}</span>
-                </label>
+                  <label
+                    htmlFor={`export-col-${col.key}`}
+                    className="cursor-pointer text-sm text-foreground"
+                  >
+                    {col.label}
+                  </label>
+                </div>
               ))}
             </div>
           </div>

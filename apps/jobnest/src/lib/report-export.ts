@@ -30,17 +30,17 @@ function toRows(
 ): Record<string, string>[] {
   return applications.map((app) => {
     const row: Record<string, string> = {};
-    if (columns.has("company")) row["Company"] = app.companyName;
-    if (columns.has("role")) row["Role"] = app.roleTitle;
+    if (columns.has("company")) row.Company = app.companyName;
+    if (columns.has("role")) row.Role = app.roleTitle;
     if (columns.has("status"))
-      row["Status"] = app.status.charAt(0).toUpperCase() + app.status.slice(1);
+      row.Status = app.status.charAt(0).toUpperCase() + app.status.slice(1);
     if (columns.has("appliedAt"))
       row["Applied At"] = app.appliedAt ? formatDate(app.appliedAt) : "";
     if (columns.has("firstResponseAt"))
       row["First Response"] = app.firstResponseAt
         ? formatDate(app.firstResponseAt)
         : "";
-    if (columns.has("source")) row["Source"] = formatSource(app.applicationSource);
+    if (columns.has("source")) row.Source = formatSource(app.applicationSource);
     if (columns.has("salaryExpectation"))
       row["Salary Expectation"] = app.salaryExpectation ?? "";
     if (columns.has("salaryOffer")) row["Salary Offer"] = app.salaryOffer ?? "";
