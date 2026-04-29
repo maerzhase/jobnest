@@ -104,19 +104,19 @@ export function ApplicationHistoryScreen() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="m-4 rounded-2xl border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
+          <div className="m-4 rounded-md border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
             Loading history…
           </div>
         ) : null}
 
         {!isLoading && events.length === 0 ? (
-          <div className="m-4 rounded-2xl border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
+          <div className="m-4 rounded-md border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
             History will appear here once you start adding or editing applications.
           </div>
         ) : null}
 
         {!isLoading && events.length > 0 && filteredEvents.length === 0 ? (
-          <div className="m-4 rounded-2xl border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
+          <div className="m-4 rounded-md border border-dashed border-border/70 px-5 py-8 text-sm text-muted-foreground sm:m-5">
             No history entries match “{searchQuery.trim()}”.
           </div>
         ) : null}
@@ -139,7 +139,7 @@ export function ApplicationHistoryScreen() {
                     className="grid gap-3 border-b border-border/50 px-4 py-3 last:border-b-0 md:grid-cols-[2.5rem_14rem_minmax(0,1fr)_10rem] md:items-center"
                     key={event.id}
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/70 text-muted-foreground">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
                       <eventMeta.icon aria-hidden="true" className="size-3.5" />
                     </div>
 

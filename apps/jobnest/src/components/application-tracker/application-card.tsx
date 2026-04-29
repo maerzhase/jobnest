@@ -169,7 +169,7 @@ function ApplicationCardComponent({
     <li
       ref={setNodeRef}
       style={style}
-      className={`group rounded-xl border bg-card shadow-[0_1px_0_rgba(255,255,255,0.5)_inset] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
+      className={`group rounded-md border bg-card shadow-[0_1px_0_rgba(255,255,255,0.5)_inset] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${
         isStale
           ? "border-dashed border-foreground/20 bg-linear-to-br from-foreground/[0.035] via-card to-card hover:border-foreground/30"
           : "border-border/70 hover:border-foreground/15"
@@ -205,7 +205,7 @@ export function ApplicationCardDragPreview({
 
   return (
     <div
-      className={`rounded-xl border bg-card shadow-[0_18px_40px_rgba(0,0,0,0.18)] ${
+      className={`rounded-md border bg-card shadow-[0_18px_40px_rgba(0,0,0,0.18)] ${
         isStale
           ? "border-dashed border-foreground/22 bg-linear-to-br from-foreground/[0.04] via-card to-card"
           : "border-foreground/15"

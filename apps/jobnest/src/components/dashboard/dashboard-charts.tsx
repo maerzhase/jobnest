@@ -42,7 +42,7 @@ export function SparkBarChart({ data }: { data: RecentActivityMetric[] }) {
           <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={`${item.label}-${index}`}>
             <DashboardInset className="flex h-32 w-full items-end overflow-hidden">
               <div
-                className="w-full rounded-lg bg-[linear-gradient(180deg,rgba(34,197,94,0.24),rgba(34,197,94,0.76))]"
+                className="w-full rounded-md bg-[linear-gradient(180deg,rgba(34,197,94,0.24),rgba(34,197,94,0.76))]"
                 style={{
                   height: `${Math.max((item.count / maxCount) * 100, item.count > 0 ? 10 : 0)}%`,
                 }}
