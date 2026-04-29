@@ -6,6 +6,7 @@ import {
   IconLayoutKanban,
   IconPlus,
   IconSettings,
+  IconTable,
 } from "@tabler/icons-react";
 import { Button, Tabs, TabsIndicator, TabsList, TabsTab } from "@jobnest/ui";
 import Image from "next/image";
@@ -19,7 +20,7 @@ type AppShellProps = {
   children: React.ReactNode;
 };
 
-type AppRoute = "applications" | "dashboard" | "history";
+type AppRoute = "applications" | "dashboard" | "history" | "reports";
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
@@ -27,15 +28,18 @@ export function AppShell({ children }: AppShellProps) {
   const isSettingsPage = pathname.startsWith("/settings");
   const isHistoryPage = pathname.startsWith("/history");
   const isDashboardPage = pathname.startsWith("/dashboard");
+  const isReportsPage = pathname.startsWith("/reports");
   const isApplicationsPage =
-    !isSettingsPage && !isHistoryPage && !isDashboardPage;
+    !isSettingsPage && !isHistoryPage && !isDashboardPage && !isReportsPage;
   const activeRoute: AppRoute | null = isSettingsPage
     ? null
     : isDashboardPage
       ? "dashboard"
       : isHistoryPage
         ? "history"
-        : "applications";
+        : isReportsPage
+          ? "reports"
+          : "applications";
 
   const handleNavigationChange = (value: AppRoute) => {
     if (value === activeRoute) {
@@ -47,7 +51,9 @@ export function AppShell({ children }: AppShellProps) {
         ? "/"
         : value === "dashboard"
           ? "/dashboard"
-          : "/history",
+          : value === "history"
+            ? "/history"
+            : "/reports",
     );
   };
 
@@ -130,6 +136,14 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <IconHistory aria-hidden="true" className="size-4" />
                 History
+              </TabsTab>
+              <TabsTab
+                aria-current={isReportsPage ? "page" : undefined}
+                className="min-w-0 justify-start px-2.5"
+                value="reports"
+              >
+                <IconTable aria-hidden="true" className="size-4" />
+                Reports
               </TabsTab>
             </TabsList>
           </Tabs>
