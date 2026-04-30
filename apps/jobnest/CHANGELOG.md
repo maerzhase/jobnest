@@ -1,5 +1,25 @@
 # jobnest
 
+## 0.0.5
+
+### Patch Changes
+
+- 2f50372: Refine the app sidebar with a more compact navigation layout so more space stays available for content.
+- 31fec15: Improve the dashboard status donut so segment transitions feel smoother and more polished.
+- db18262: Make the top edge of the JobNest desktop window behave more like a native titlebar.
+
+  You can now drag the window from the empty top strip, and double-click that area to maximize or restore the window while keeping buttons and other controls clickable.
+
+- 623f7f5: Add a new Reports tab for exporting application data.
+
+  Filter applications by date range and status, deselect any rows you don't want, and export the result as CSV or Excel through a single export dialog where you can pick the format and the columns to include. All export generation happens locally on your device — nothing is sent to a server.
+
+- 457bd63: Show stale application status across the app and let you choose how many quiet days count as stale.
+- cc5936e: Use Tabler icons for the app and website theme toggles, and update the website GitHub button to match.
+- Updated dependencies [2333921]
+- Updated dependencies [623f7f5]
+  - @jobnest/ui@0.0.4
+
 ## 0.0.4
 
 ### Patch Changes
