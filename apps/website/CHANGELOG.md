@@ -1,5 +1,17 @@
 # website
 
+## 0.0.2
+
+### Patch Changes
+
+- 18aa0aa: Improve the website mobile layout with calmer background gradients, tighter spacing, and better small-screen alignment.
+- cc5936e: Use Tabler icons for the app and website theme toggles, and update the website GitHub button to match.
+- 01a1558: Improve the homepage copy for the Reports feature so the export workflow and privacy benefits are clearer.
+- 623f7f5: Add a story section to the homepage introducing the new Reports feature, with light and dark screenshots of the export flow.
+- Updated dependencies [2333921]
+- Updated dependencies [623f7f5]
+  - @jobnest/ui@0.0.4
+
 ## 0.0.1
 
 ### Patch Changes

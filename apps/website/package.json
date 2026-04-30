@@ -1,6 +1,6 @@
 {
   "name": "website",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "dependencies": {
     "@jobnest/ui": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
