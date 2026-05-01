@@ -44,7 +44,7 @@ const steps: { title: string; body: string }[] = [
   },
   {
     title: "Point your agent at the format spec",
-    body: 'Open ChatGPT, Claude, or any LLM and say: "Read the import format at jobnest.app/llm.txt and convert my data to match it."',
+    body: 'Open ChatGPT, Claude, or any LLM and say: "Read the import format at jobnest.m3000.io/llm.txt and convert my data to match it."',
   },
   {
     title: "Import the result into JobNest",

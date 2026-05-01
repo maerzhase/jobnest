@@ -4,6 +4,7 @@
   "description": "Capability for the default window",
   "windows": ["main"],
   "permissions": [
+    "core:event:default",
     "core:window:allow-close",
     "core:window:allow-is-maximized",
     "core:window:allow-maximize",
