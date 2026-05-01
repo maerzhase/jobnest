@@ -15,6 +15,9 @@ import { HistoryToolbar } from "./history-toolbar";
 import { ContentCard } from "./content-card";
 import { UpdateNotice } from "./update-notice";
 import { WindowDragSurface } from "./window-drag-surface";
+import { OnboardingContext } from "./onboarding/onboarding-context";
+import { OnboardingDialog } from "./onboarding/onboarding-dialog";
+import { useOnboarding } from "../hooks/use-onboarding";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -23,6 +26,7 @@ type AppShellProps = {
 type AppRoute = "applications" | "dashboard" | "history" | "reports";
 
 export function AppShell({ children }: AppShellProps) {
+  const { isOpen, open, close, complete } = useOnboarding();
   const pathname = usePathname();
   const router = useRouter();
   const isSettingsPage = pathname.startsWith("/settings");
@@ -58,6 +62,8 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   return (
+    <OnboardingContext.Provider value={{ openOnboarding: open }}>
+    <OnboardingDialog isOpen={isOpen} onClose={close} onComplete={complete} />
     <WindowDragSurface className="h-screen overflow-hidden bg-page">
       <div className="grid h-full grid-cols-[12rem_minmax(0,1fr)] gap-2 p-2 xl:grid-cols-[12.5rem_minmax(0,1fr)]">
         <aside className="flex h-full flex-col gap-2 px-1">
@@ -155,5 +161,6 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </div>
     </WindowDragSurface>
+    </OnboardingContext.Provider>
   );
 }
