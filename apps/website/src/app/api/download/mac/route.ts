@@ -23,7 +23,7 @@ function pickMacAsset(assets: GitHubAsset[]): GitHubAsset | undefined {
   );
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const res = await fetch(RELEASES_API, {
     headers: {
       Accept: "application/vnd.github.v3+json",
