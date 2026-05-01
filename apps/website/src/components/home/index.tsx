@@ -1,4 +1,5 @@
 import { JOBNEST_VERSION } from "../../lib/env";
+import { AgentImportSection } from "./agent-import-section";
 import { ClosingSections } from "./closing-sections";
 import { HeroSection } from "./hero-section";
 import { AmbientBackground } from "./shared";
@@ -41,9 +42,13 @@ export function HomePage() {
 
       <HeroSection downloadUrl={DOWNLOAD_URL} />
 
-      {storySections.map((section) => (
-        <StorySection key={section.title} {...section} />
-      ))}
+      <div id="features">
+        {storySections.map((section) => (
+          <StorySection key={section.title} {...section} />
+        ))}
+      </div>
+
+      <AgentImportSection />
 
       <ClosingSections downloadUrl={DOWNLOAD_URL} repoUrl={REPO_URL} />
     </main>

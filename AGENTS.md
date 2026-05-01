@@ -409,3 +409,32 @@ Always:
 ## Final Note
 
 This document is **authoritative**. If a change conflicts with these rules, follow this guide.
+
+---
+
+# llm.txt Maintenance
+
+`apps/website/public/llm.txt` is served at `/llm.txt` on the website. It is the canonical onboarding guide for AI agents and LLMs that need to import data into JobNest.
+
+## Keep it in sync — always
+
+When any of the following change, update `llm.txt` immediately as part of the same task:
+
+| What changed | What to update in llm.txt |
+|---|---|
+| New field added to any entity (Company, Role, Application, Contact, Note, Task, Attachment, StageEvent) | Add the field to the relevant schema table and JSON example |
+| Field removed or renamed | Remove or rename it everywhere it appears |
+| New valid `status` value | Add it to the `status` valid values list and the normalization mapping |
+| New valid `application_source`, note `kind`, or task `kind` value | Update the relevant "common values" note |
+| New top-level key added to `ImportDataInput` | Add it to the import format overview and mark required/optional |
+| Import behavior changes (e.g. no longer replaces all data) | Update the warning and the "How to import" section |
+
+## Source of truth for the schema
+
+The schema is generated from Rust via Specta. The authoritative types live in:
+
+- `apps/jobnest/src-tauri/src/models.rs` — Rust structs
+- `apps/jobnest/src/lib/api/bindings.ts` — generated TypeScript (do not edit manually)
+- `apps/jobnest/src/lib/status.ts` — valid status values
+
+After updating `llm.txt`, do a quick sanity check: every field in the JSON examples must match the current `bindings.ts` types.
