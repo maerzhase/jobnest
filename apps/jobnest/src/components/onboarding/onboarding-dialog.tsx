@@ -89,9 +89,9 @@ export function OnboardingDialog({
           {/* Step dots + skip */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-            {STEPS.map((_, i) => (
+            {STEPS.map((s, i) => (
               <button
-                key={i}
+                key={s.title}
                 aria-label={`Go to step ${i + 1}`}
                 className={[
                   "h-1.5 rounded-full transition-all duration-200 cursor-pointer",
