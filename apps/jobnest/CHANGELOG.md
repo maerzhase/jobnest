@@ -1,5 +1,14 @@
 # jobnest
 
+## 0.0.6
+
+### Patch Changes
+
+- 3bdcd11: Add issue reporting from the Help menu and error notifications.
+- 8f035ce: Add first-run onboarding dialog. Shows automatically on first launch and walks new users through the app's core value, application tracking pipeline, and AI-powered import flow via llm.txt. Skippable at any step, remembered in localStorage once dismissed or completed. Accessible again via Settings → Show Onboarding and the native View menu.
+- Updated dependencies [3bdcd11]
+  - @jobnest/ui@0.0.5
+
 ## 0.0.5
 
 ### Patch Changes
