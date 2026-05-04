@@ -235,6 +235,12 @@ pub fn run() {
                     let _ = window.emit("show-onboarding", ());
                 }
             }
+            "report-issue" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_focus();
+                    let _ = window.emit("report-issue", ());
+                }
+            }
             "check-for-updates" => trigger_update_check(app),
             _ => {}
         })
@@ -345,6 +351,7 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
         MenuItemBuilder::with_id("show-onboarding", "Show Onboarding").build(app)?;
     let check_for_updates =
         MenuItemBuilder::with_id("check-for-updates", "Check for Updates…").build(app)?;
+    let report_issue = MenuItemBuilder::with_id("report-issue", "Report an Issue…").build(app)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let view_separator = PredefinedMenuItem::separator(app)?;
     let edit_separator = PredefinedMenuItem::separator(app)?;
@@ -392,18 +399,25 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
             .separator()
             .item(&PredefinedMenuItem::quit(app, None)?)
             .build()?;
+        let help_submenu = SubmenuBuilder::new(app, "Help")
+            .item(&report_issue)
+            .build()?;
 
         MenuBuilder::new(app)
             .item(&app_submenu)
             .item(&edit_submenu)
             .item(&view_submenu)
+            .item(&help_submenu)
             .build()?
     };
 
     #[cfg(not(target_os = "macos"))]
     let menu = {
+        let help_separator = PredefinedMenuItem::separator(app)?;
         let help_submenu = SubmenuBuilder::new(app, "Help")
             .item(&check_for_updates)
+            .item(&help_separator)
+            .item(&report_issue)
             .build()?;
 
         MenuBuilder::new(app)

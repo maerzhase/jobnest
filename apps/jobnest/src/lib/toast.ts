@@ -1,6 +1,7 @@
 "use client";
 
 import { createToastManager } from "@jobnest/ui";
+import { reportIssue } from "./feedback";
 
 export const appToastManager = createToastManager();
 
@@ -35,6 +36,12 @@ export function showWarningToast({ title, description }: ToastOptions): void {
 
 export function showErrorToast({ title, description }: ToastOptions): void {
   appToastManager.add({
+    actionProps: {
+      children: "Report issue",
+      onClick: () => {
+        void reportIssue({ errorMessage: description ?? title });
+      },
+    },
     title,
     description,
     priority: "high",
