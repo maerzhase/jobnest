@@ -20,8 +20,8 @@ use services::{ApplicationsService, SettingsService};
 use specta_typescript::Typescript;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
-    AppHandle, LogicalPosition, Manager, PhysicalPosition, PhysicalSize, TitleBarStyle, WebviewUrl,
-    WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
+    AppHandle, Emitter, LogicalPosition, Manager, PhysicalPosition, PhysicalSize, TitleBarStyle,
+    WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 #[cfg(desktop)]
@@ -214,14 +214,32 @@ pub fn run() {
             _ => {}
         })
         .on_menu_event(|app, event| match event.id().0.as_str() {
-            "open-settings" => {
-                let _ = navigate_main_window(app, "/settings");
+            "open-home" => {
+                let _ = navigate_main_window(app, "/");
+            }
+            "open-dashboard" => {
+                let _ = navigate_main_window(app, "/dashboard");
             }
             "open-history" => {
                 let _ = navigate_main_window(app, "/history");
             }
-            "open-home" => {
-                let _ = navigate_main_window(app, "/");
+            "open-reports" => {
+                let _ = navigate_main_window(app, "/reports");
+            }
+            "open-settings" => {
+                let _ = navigate_main_window(app, "/settings");
+            }
+            "show-onboarding" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_focus();
+                    let _ = window.emit("show-onboarding", ());
+                }
+            }
+            "report-issue" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_focus();
+                    let _ = window.emit("report-issue", ());
+                }
             }
             "check-for-updates" => trigger_update_check(app),
             _ => {}
@@ -325,11 +343,17 @@ fn typescript_bindings_path() -> PathBuf {
 
 fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
     let open_home = MenuItemBuilder::with_id("open-home", "Applications").build(app)?;
+    let open_dashboard = MenuItemBuilder::with_id("open-dashboard", "Dashboard").build(app)?;
     let open_history = MenuItemBuilder::with_id("open-history", "History").build(app)?;
+    let open_reports = MenuItemBuilder::with_id("open-reports", "Reports").build(app)?;
     let open_settings = MenuItemBuilder::with_id("open-settings", "Settings…").build(app)?;
+    let show_onboarding =
+        MenuItemBuilder::with_id("show-onboarding", "Show Onboarding").build(app)?;
     let check_for_updates =
         MenuItemBuilder::with_id("check-for-updates", "Check for Updates…").build(app)?;
+    let report_issue = MenuItemBuilder::with_id("report-issue", "Report an Issue…").build(app)?;
     let separator = PredefinedMenuItem::separator(app)?;
+    let view_separator = PredefinedMenuItem::separator(app)?;
     let edit_separator = PredefinedMenuItem::separator(app)?;
     let undo = PredefinedMenuItem::undo(app, None)?;
     let redo = PredefinedMenuItem::redo(app, None)?;
@@ -339,7 +363,16 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
     let select_all = PredefinedMenuItem::select_all(app, None)?;
 
     let view_submenu = SubmenuBuilder::new(app, "View")
-        .items(&[&open_home, &open_history, &open_settings, &separator])
+        .items(&[
+            &open_home,
+            &open_dashboard,
+            &open_history,
+            &open_reports,
+            &separator,
+            &open_settings,
+            &view_separator,
+            &show_onboarding,
+        ])
         .build()?;
 
     let edit_submenu = SubmenuBuilder::new(app, "Edit")
@@ -366,18 +399,25 @@ fn build_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> 
             .separator()
             .item(&PredefinedMenuItem::quit(app, None)?)
             .build()?;
+        let help_submenu = SubmenuBuilder::new(app, "Help")
+            .item(&report_issue)
+            .build()?;
 
         MenuBuilder::new(app)
             .item(&app_submenu)
             .item(&edit_submenu)
             .item(&view_submenu)
+            .item(&help_submenu)
             .build()?
     };
 
     #[cfg(not(target_os = "macos"))]
     let menu = {
+        let help_separator = PredefinedMenuItem::separator(app)?;
         let help_submenu = SubmenuBuilder::new(app, "Help")
             .item(&check_for_updates)
+            .item(&help_separator)
+            .item(&report_issue)
             .build()?;
 
         MenuBuilder::new(app)
