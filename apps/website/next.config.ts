@@ -10,7 +10,6 @@ const jobnestPkg = JSON.parse(
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@jobnest/ui"],
-  output: "export",
   env: {
     NEXT_PUBLIC_JOBNEST_VERSION: jobnestPkg.version,
   },

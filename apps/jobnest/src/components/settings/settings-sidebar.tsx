@@ -1,7 +1,9 @@
 "use client";
 
-import { Tabs, TabsIndicator, TabsList, TabsTab } from "@jobnest/ui";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { Button, Tabs, TabsIndicator, TabsList, TabsTab } from "@jobnest/ui";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../../lib/settings";
+import { useOnboardingContext } from "../onboarding/onboarding-context";
 
 type SettingsSidebarProps = {
   activeSection: SettingsSection;
@@ -12,6 +14,8 @@ export function SettingsSidebar({
   activeSection,
   onSectionChange,
 }: SettingsSidebarProps) {
+  const { openOnboarding } = useOnboardingContext();
+
   return (
     <aside className="lg:border-r lg:border-border lg:pr-6">
       <div className="mb-4">
@@ -46,6 +50,19 @@ export function SettingsSidebar({
           ))}
         </TabsList>
       </Tabs>
+
+      <div className="mt-6 lg:border-t lg:border-border lg:pt-4">
+        <Button
+          className="w-full justify-start px-0 text-muted-foreground hover:text-foreground"
+          onClick={openOnboarding}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          <IconInfoCircle aria-hidden="true" className="size-4" />
+          Show Onboarding
+        </Button>
+      </div>
     </aside>
   );
 }

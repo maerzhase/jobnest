@@ -44,7 +44,7 @@ function ToastViewportRenderer(): JSX.Element {
                 <BaseToast.Title className="text-sm font-semibold leading-5" />
                 <BaseToast.Description className="text-sm leading-5 text-muted-foreground" />
                 {toast.actionProps ? (
-                  <BaseToast.Action className="mt-2 inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background" />
+                  <BaseToast.Action className="mt-2 inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-transparent bg-transparent px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background" />
                 ) : null}
               </div>
               <BaseToast.Close className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">

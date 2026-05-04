@@ -9,12 +9,18 @@ import {
   IconTable,
 } from "@tabler/icons-react";
 import { Button, Tabs, TabsIndicator, TabsList, TabsTab } from "@jobnest/ui";
+import { listen } from "@tauri-apps/api/event";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { reportIssue } from "../lib/feedback";
+import { useOnboarding } from "../hooks/use-onboarding";
 import { HistoryToolbar } from "./history-toolbar";
 import { ContentCard } from "./content-card";
 import { UpdateNotice } from "./update-notice";
 import { WindowDragSurface } from "./window-drag-surface";
+import { OnboardingContext } from "./onboarding/onboarding-context";
+import { OnboardingDialog } from "./onboarding/onboarding-dialog";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -23,6 +29,7 @@ type AppShellProps = {
 type AppRoute = "applications" | "dashboard" | "history" | "reports";
 
 export function AppShell({ children }: AppShellProps) {
+  const { isOpen, open, close, complete } = useOnboarding();
   const pathname = usePathname();
   const router = useRouter();
   const isSettingsPage = pathname.startsWith("/settings");
@@ -41,6 +48,16 @@ export function AppShell({ children }: AppShellProps) {
           ? "reports"
           : "applications";
 
+  useEffect(() => {
+    const unlisten = listen("report-issue", () => {
+      void reportIssue();
+    });
+
+    return () => {
+      void unlisten.then((f) => f());
+    };
+  }, []);
+
   const handleNavigationChange = (value: AppRoute) => {
     if (value === activeRoute) {
       return;
@@ -58,102 +75,107 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   return (
-    <WindowDragSurface className="h-screen overflow-hidden bg-page">
-      <div className="grid h-full grid-cols-[12rem_minmax(0,1fr)] gap-2 p-2 xl:grid-cols-[12.5rem_minmax(0,1fr)]">
-        <aside className="flex h-full flex-col gap-2 px-1">
-          <div className="-mt-px flex items-center justify-end gap-1">
-            <HistoryToolbar />
+    <OnboardingContext.Provider value={{ openOnboarding: open }}>
+      <OnboardingDialog isOpen={isOpen} onClose={close} onComplete={complete} />
+      <WindowDragSurface className="h-screen overflow-hidden bg-page">
+        <div className="grid h-full grid-cols-[12rem_minmax(0,1fr)] gap-2 p-2 xl:grid-cols-[12.5rem_minmax(0,1fr)]">
+          <aside className="flex h-full flex-col gap-2 px-1">
+            <div className="-mt-px flex items-center justify-end gap-1">
+              <HistoryToolbar />
+              <Button
+                aria-current={isSettingsPage ? "page" : undefined}
+                className={
+                  isSettingsPage
+                    ? "border-border bg-card text-foreground shadow-sm hover:bg-card"
+                    : undefined
+                }
+                onClick={() => router.push("/settings")}
+                type="button"
+                variant="ghost"
+                size="xs"
+              >
+                <IconSettings aria-hidden="true" className="size-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 px-1">
+              <Image
+                src="/icon-transparent.png"
+                alt=""
+                aria-hidden="true"
+                width={40}
+                height={40}
+                className="size-9 shrink-0 object-contain"
+                priority
+              />
+              <div className="min-w-0">
+                <h1 className="text-sm font-medium text-foreground">JobNest</h1>
+              </div>
+            </div>
             <Button
-              aria-current={isSettingsPage ? "page" : undefined}
-              className={
-                isSettingsPage
-                  ? "border-border bg-card text-foreground shadow-sm hover:bg-card"
-                  : undefined
-              }
-              onClick={() => router.push("/settings")}
+              className="mt-2 h-8 w-full justify-start px-2.5 text-xs"
+              onClick={() => router.push("/?new=1")}
               type="button"
-              variant="ghost"
+              variant="primary"
               size="xs"
             >
-              <IconSettings aria-hidden="true" className="size-4" />
+              <IconPlus aria-hidden="true" className="size-4" />
+              Add application
             </Button>
-          </div>
-          <div className="flex items-center gap-2 px-1">
-            <Image
-              src="/icon-transparent.png"
-              alt=""
-              aria-hidden="true"
-              width={40}
-              height={40}
-              className="size-9 shrink-0 object-contain"
-              priority
-            />
-            <div className="min-w-0">
-              <h1 className="text-sm font-medium text-foreground">JobNest</h1>
-            </div>
-          </div>
-          <Button
-            className="mt-2 h-8 w-full justify-start px-2.5 text-xs"
-            onClick={() => router.push("/?new=1")}
-            type="button"
-            variant="primary"
-            size="xs"
-          >
-            <IconPlus aria-hidden="true" className="size-4" />
-            Add application
-          </Button>
-          <Tabs
-            aria-label="Primary"
-            className="mt-1"
-            onValueChange={(value) => handleNavigationChange(value as AppRoute)}
-            orientation="vertical"
-            size="sm"
-            variant="surface"
-            value={activeRoute}
-          >
-            <TabsList className="w-full p-0">
-              <TabsIndicator />
-              <TabsTab
-                aria-current={isApplicationsPage ? "page" : undefined}
-                className="min-w-0 justify-start px-2.5"
-                value="applications"
-              >
-                <IconLayoutKanban aria-hidden="true" className="size-4" />
-                Applications
-              </TabsTab>
-              <TabsTab
-                aria-current={isDashboardPage ? "page" : undefined}
-                className="min-w-0 justify-start px-2.5"
-                value="dashboard"
-              >
-                <IconChartBar aria-hidden="true" className="size-4" />
-                Dashboard
-              </TabsTab>
-              <TabsTab
-                aria-current={isHistoryPage ? "page" : undefined}
-                className="min-w-0 justify-start px-2.5"
-                value="history"
-              >
-                <IconHistory aria-hidden="true" className="size-4" />
-                History
-              </TabsTab>
-              <TabsTab
-                aria-current={isReportsPage ? "page" : undefined}
-                className="min-w-0 justify-start px-2.5"
-                value="reports"
-              >
-                <IconTable aria-hidden="true" className="size-4" />
-                Reports
-              </TabsTab>
-            </TabsList>
-          </Tabs>
-          <UpdateNotice />
-        </aside>
+            <Tabs
+              aria-label="Primary"
+              className="mt-1"
+              onValueChange={(value) =>
+                handleNavigationChange(value as AppRoute)
+              }
+              orientation="vertical"
+              size="sm"
+              variant="surface"
+              value={activeRoute}
+            >
+              <TabsList className="w-full p-0">
+                <TabsIndicator />
+                <TabsTab
+                  aria-current={isApplicationsPage ? "page" : undefined}
+                  className="min-w-0 justify-start px-2.5"
+                  value="applications"
+                >
+                  <IconLayoutKanban aria-hidden="true" className="size-4" />
+                  Applications
+                </TabsTab>
+                <TabsTab
+                  aria-current={isDashboardPage ? "page" : undefined}
+                  className="min-w-0 justify-start px-2.5"
+                  value="dashboard"
+                >
+                  <IconChartBar aria-hidden="true" className="size-4" />
+                  Dashboard
+                </TabsTab>
+                <TabsTab
+                  aria-current={isHistoryPage ? "page" : undefined}
+                  className="min-w-0 justify-start px-2.5"
+                  value="history"
+                >
+                  <IconHistory aria-hidden="true" className="size-4" />
+                  History
+                </TabsTab>
+                <TabsTab
+                  aria-current={isReportsPage ? "page" : undefined}
+                  className="min-w-0 justify-start px-2.5"
+                  value="reports"
+                >
+                  <IconTable aria-hidden="true" className="size-4" />
+                  Reports
+                </TabsTab>
+              </TabsList>
+            </Tabs>
+            <UpdateNotice />
+          </aside>
 
-        <div className="min-h-0 min-w-0">
-          <ContentCard>{children}</ContentCard>
+          <div className="min-h-0 min-w-0">
+            <ContentCard>{children}</ContentCard>
+          </div>
         </div>
-      </div>
-    </WindowDragSurface>
+      </WindowDragSurface>
+    </OnboardingContext.Provider>
   );
 }

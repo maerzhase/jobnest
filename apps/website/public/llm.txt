@@ -1,0 +1,396 @@
+# JobNest
+
+JobNest is a privacy-first, local-first desktop job application tracker. All data lives on the user's device — no cloud backend, no telemetry. Built with Tauri and Next.js.
+
+## What it does
+
+- Track job applications through a pipeline (Saved → Applied → Interview → Offer / Rejected)
+- Store companies, roles, contacts, notes, tasks, and attachments
+- Export reports to CSV or XLSX
+- Import and export full data backups
+
+---
+
+## Importing Data into JobNest
+
+The primary way to help a user import external data (e.g. a spreadsheet, Notion table, or job board export) is to convert it into the JobNest JSON import format and load it via **Settings → Data → Import JSON**.
+
+### Import format
+
+The import payload is a JSON object. All fields at the top level are required except `application_history_events` and `app_settings`.
+
+```json
+{
+  "companies": [...],
+  "roles": [...],
+  "applications": [...],
+  "contacts": [...],
+  "notes": [...],
+  "tasks": [...],
+  "attachments": [...],
+  "stage_events": [...],
+  "application_history_events": null,
+  "app_settings": null
+}
+```
+
+> **Warning:** Importing replaces all existing data. The user should export a backup first.
+
+### Generating IDs
+
+Every entity needs a `id` field that is a UUID v4. Generate a fresh UUID for each record. Cross-references between entities use these IDs (e.g. `role.company_id` must match a `company.id` in the same payload).
+
+### Timestamps
+
+All timestamps are ISO 8601 strings in UTC, e.g. `"2024-03-15T10:30:00Z"`. Use `null` for unknown optional dates.
+
+---
+
+## Entity Schemas
+
+### Company
+
+```json
+{
+  "id": "<uuid>",
+  "name": "Acme Corp",
+  "website": "https://acme.com",
+  "location": "Berlin, Germany",
+  "industry": "Software",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| id | UUID string | yes |
+| name | string | yes |
+| website | string \| null | no |
+| location | string \| null | no |
+| industry | string \| null | no |
+| created_at | ISO 8601 string | yes |
+| updated_at | ISO 8601 string | yes |
+
+### Role
+
+One role per job posting. Multiple roles can belong to the same company.
+
+```json
+{
+  "id": "<uuid>",
+  "company_id": "<company uuid>",
+  "title": "Senior Engineer",
+  "job_board": "LinkedIn",
+  "source_url": "https://linkedin.com/jobs/123",
+  "application_source": "job_board",
+  "employment_type": "Full-Time",
+  "location_text": "Remote",
+  "salary_text": "EUR 80k–100k",
+  "description": null,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| id | UUID string | yes |
+| company_id | UUID string (→ Company) | yes |
+| title | string | yes |
+| job_board | string \| null | no |
+| source_url | string \| null | no |
+| application_source | string | yes — see values below |
+| employment_type | string \| null | no |
+| location_text | string \| null | no |
+| salary_text | string \| null | no |
+| description | string \| null | no |
+| created_at | ISO 8601 string | yes |
+| updated_at | ISO 8601 string | yes |
+
+`application_source` common values: `"job_board"`, `"recruiter"`, `"referral"`, `"direct"`, `"other"`
+
+### Application
+
+One application per role. Links to a Role and carries the pipeline status.
+
+```json
+{
+  "id": "<uuid>",
+  "role_id": "<role uuid>",
+  "status": "applied",
+  "applied_at": "2024-03-01T00:00:00Z",
+  "first_response_at": null,
+  "deadline_at": null,
+  "salary_expectation": "EUR 90k",
+  "salary_offer": null,
+  "last_activity_at": "2024-03-01T00:00:00Z",
+  "priority": 1,
+  "archived_at": null,
+  "created_at": "2024-03-01T00:00:00Z",
+  "updated_at": "2024-03-01T00:00:00Z"
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| id | UUID string | yes |
+| role_id | UUID string (→ Role) | yes |
+| status | string | yes — see values below |
+| applied_at | ISO 8601 string \| null | no |
+| first_response_at | ISO 8601 string \| null | no |
+| deadline_at | ISO 8601 string \| null | no |
+| salary_expectation | string \| null | no |
+| salary_offer | string \| null | no |
+| last_activity_at | ISO 8601 string | yes |
+| priority | integer | yes (use `1` as default) |
+| archived_at | ISO 8601 string \| null | no |
+| created_at | ISO 8601 string | yes |
+| updated_at | ISO 8601 string | yes |
+
+`status` valid values: `"saved"`, `"applied"`, `"interview"`, `"offer"`, `"rejected"`
+
+### Contact
+
+Optional. People at a company you've spoken to.
+
+```json
+{
+  "id": "<uuid>",
+  "company_id": "<company uuid>",
+  "name": "Jane Recruiter",
+  "title": "Talent Partner",
+  "email": "jane@acme.com",
+  "linkedin_url": null,
+  "notes": null,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+### Note
+
+Optional. Free-text notes attached to an application.
+
+```json
+{
+  "id": "<uuid>",
+  "application_id": "<application uuid>",
+  "body": "Had a 30-min call with the hiring manager.",
+  "kind": "interview",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+`kind` common values: `"general"`, `"interview"`, `"followup"`
+
+### Task
+
+Optional. Action items tied to an application.
+
+```json
+{
+  "id": "<uuid>",
+  "application_id": "<application uuid>",
+  "title": "Send thank-you email",
+  "due_at": "2024-03-05T00:00:00Z",
+  "completed_at": null,
+  "kind": "followup",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+### Attachment
+
+Optional. File references — the files themselves must exist on the user's device.
+
+```json
+{
+  "id": "<uuid>",
+  "application_id": "<application uuid>",
+  "kind": "resume",
+  "file_name": "resume_2024.pdf",
+  "file_path": "/Users/alice/Documents/resume_2024.pdf",
+  "mime_type": "application/pdf",
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+### StageEvent
+
+Required array but can be empty (`[]`). Records pipeline status transitions.
+
+```json
+{
+  "id": "<uuid>",
+  "application_id": "<application uuid>",
+  "from_status": null,
+  "to_status": "saved",
+  "changed_at": "2024-01-01T00:00:00Z",
+  "source": "import"
+}
+```
+
+For a fresh import, create one StageEvent per application with `from_status: null` and `to_status` matching the application's `status`.
+
+---
+
+## Converting a Table to Import JSON
+
+When a user shares a table of job applications (from a spreadsheet, Notion, Airtable, etc.), follow this process:
+
+1. **Map columns to JobNest fields.** Company name → `company.name`, role/title → `role.title`, status → `application.status` (normalize to one of the five valid values), URL → `role.source_url`, date applied → `application.applied_at`.
+
+2. **Deduplicate companies.** If the same company appears in multiple rows, create one `Company` object and reuse its `id` across all related roles.
+
+3. **Create one Role and one Application per row.**
+
+4. **Generate UUIDs** for every entity. In JavaScript: `crypto.randomUUID()`. In Python: `str(uuid.uuid4())`.
+
+5. **Normalize status values.** Map common variants:
+   - "wishlist", "want to apply", "bookmarked" → `"saved"`
+   - "applied", "submitted", "sent" → `"applied"`
+   - "phone screen", "interviewing", "technical" → `"interview"`
+   - "offer", "offer received" → `"offer"`
+   - "rejected", "declined", "no" → `"rejected"`
+
+6. **Set `last_activity_at`** to `applied_at` if known, otherwise use today's date.
+
+7. **Add a StageEvent** for each application with `from_status: null`, `to_status` matching `application.status`, and `source: "import"`.
+
+8. **Leave empty arrays** for `contacts`, `notes`, `tasks`, `attachments` if the source data has none.
+
+9. **Set `application_history_events: null`** and `app_settings: null` unless you have that data.
+
+### Minimal example for a two-row table
+
+Input table:
+| Company | Role | Status | Applied |
+|---------|------|--------|---------|
+| Stripe | Backend Engineer | Applied | 2024-03-01 |
+| Linear | Product Designer | Interview | 2024-02-15 |
+
+Output JSON:
+
+```json
+{
+  "companies": [
+    {
+      "id": "11111111-0000-0000-0000-000000000001",
+      "name": "Stripe",
+      "website": null,
+      "location": null,
+      "industry": null,
+      "created_at": "2024-03-01T00:00:00Z",
+      "updated_at": "2024-03-01T00:00:00Z"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000002",
+      "name": "Linear",
+      "website": null,
+      "location": null,
+      "industry": null,
+      "created_at": "2024-02-15T00:00:00Z",
+      "updated_at": "2024-02-15T00:00:00Z"
+    }
+  ],
+  "roles": [
+    {
+      "id": "22222222-0000-0000-0000-000000000001",
+      "company_id": "11111111-0000-0000-0000-000000000001",
+      "title": "Backend Engineer",
+      "job_board": null,
+      "source_url": null,
+      "application_source": "job_board",
+      "employment_type": null,
+      "location_text": null,
+      "salary_text": null,
+      "description": null,
+      "created_at": "2024-03-01T00:00:00Z",
+      "updated_at": "2024-03-01T00:00:00Z"
+    },
+    {
+      "id": "22222222-0000-0000-0000-000000000002",
+      "company_id": "11111111-0000-0000-0000-000000000002",
+      "title": "Product Designer",
+      "job_board": null,
+      "source_url": null,
+      "application_source": "job_board",
+      "employment_type": null,
+      "location_text": null,
+      "salary_text": null,
+      "description": null,
+      "created_at": "2024-02-15T00:00:00Z",
+      "updated_at": "2024-02-15T00:00:00Z"
+    }
+  ],
+  "applications": [
+    {
+      "id": "33333333-0000-0000-0000-000000000001",
+      "role_id": "22222222-0000-0000-0000-000000000001",
+      "status": "applied",
+      "applied_at": "2024-03-01T00:00:00Z",
+      "first_response_at": null,
+      "deadline_at": null,
+      "salary_expectation": null,
+      "salary_offer": null,
+      "last_activity_at": "2024-03-01T00:00:00Z",
+      "priority": 1,
+      "archived_at": null,
+      "created_at": "2024-03-01T00:00:00Z",
+      "updated_at": "2024-03-01T00:00:00Z"
+    },
+    {
+      "id": "33333333-0000-0000-0000-000000000002",
+      "role_id": "22222222-0000-0000-0000-000000000002",
+      "status": "interview",
+      "applied_at": "2024-02-15T00:00:00Z",
+      "first_response_at": null,
+      "deadline_at": null,
+      "salary_expectation": null,
+      "salary_offer": null,
+      "last_activity_at": "2024-02-15T00:00:00Z",
+      "priority": 1,
+      "archived_at": null,
+      "created_at": "2024-02-15T00:00:00Z",
+      "updated_at": "2024-02-15T00:00:00Z"
+    }
+  ],
+  "contacts": [],
+  "notes": [],
+  "tasks": [],
+  "attachments": [],
+  "stage_events": [
+    {
+      "id": "44444444-0000-0000-0000-000000000001",
+      "application_id": "33333333-0000-0000-0000-000000000001",
+      "from_status": null,
+      "to_status": "applied",
+      "changed_at": "2024-03-01T00:00:00Z",
+      "source": "import"
+    },
+    {
+      "id": "44444444-0000-0000-0000-000000000002",
+      "application_id": "33333333-0000-0000-0000-000000000002",
+      "from_status": null,
+      "to_status": "interview",
+      "changed_at": "2024-02-15T00:00:00Z",
+      "source": "import"
+    }
+  ],
+  "application_history_events": null,
+  "app_settings": null
+}
+```
+
+---
+
+## How to import
+
+1. Generate the JSON payload following the schema above.
+2. Save it as a `.json` file.
+3. Open JobNest → **Settings → Data → Import JSON** and select the file.
+
+> Back up existing data first via **Settings → Data → Export Backup** before importing.
