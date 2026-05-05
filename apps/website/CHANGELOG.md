@@ -1,5 +1,18 @@
 # website
 
+## 0.1.0
+
+### Minor Changes
+
+- 38c65bd: Feat: Add /api/download/mac proxy endpoint to serve the latest macOS release directly and track downloads via Vercel Analytics
+
+### Patch Changes
+
+- fe30625: Add llm.txt format spec and agent import section to homepage. Introduces a publicly served `/llm.txt` with the full import data schema so AI agents can convert existing tracker data into the JobNest import format. Adds a new homepage section explaining the privacy-first approach to data migration, lightweight header navigation, and a redesigned download section.
+- Feat: Update app screenshots to latest app; Hide next menu
+- Updated dependencies [3bdcd11]
+  - @jobnest/ui@0.0.5
+
 ## 0.0.2
 
 ### Patch Changes

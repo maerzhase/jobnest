@@ -1,5 +1,11 @@
 # @jobnest/ui
 
+## 0.0.5
+
+### Patch Changes
+
+- 3bdcd11: Add issue reporting from the Help menu and error notifications.
+
 ## 0.0.4
 
 ### Patch Changes
