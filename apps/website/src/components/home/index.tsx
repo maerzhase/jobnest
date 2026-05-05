@@ -7,7 +7,7 @@ import { SiteHeader } from "./site-header";
 import { StorySection } from "./story-section";
 
 export const REPO_URL = "https://github.com/maerzhase/jobnest";
-export const DOWNLOAD_URL = "/api/download/mac";
+export const DOWNLOAD_URL = "/download/mac";
 
 const storySections = [
   {
