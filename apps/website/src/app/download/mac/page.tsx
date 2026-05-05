@@ -1,6 +1,11 @@
 "use client";
 
-import { IconArrowLeft, IconBrandGithubFilled, IconDownload, IconInfoCircle } from "@tabler/icons-react";
+import {
+  IconArrowLeft,
+  IconBrandGithubFilled,
+  IconDownload,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { AmbientBackground, ButtonLink } from "../../../components/home/shared";
 
@@ -50,7 +55,8 @@ export default function DownloadMacPage() {
                   : `Your download starts in ${secondsLeft}s`}
               </h1>
               <p className="font-light text-base text-muted-foreground leading-relaxed">
-                Check your browser&apos;s downloads. <br /> If nothing happens, you can re-trigger it manually below.
+                Check your browser&apos;s downloads. <br /> If nothing happens,
+                you can re-trigger it manually below.
               </p>
             </div>
 
@@ -85,7 +91,7 @@ export default function DownloadMacPage() {
                   <span className="font-medium text-foreground">
                     Open Anyway
                   </span>
-                  . A signed build comming soon.
+                  . A signed build coming soon.
                 </p>
               </div>
             </aside>

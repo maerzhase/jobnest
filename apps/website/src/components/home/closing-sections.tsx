@@ -12,7 +12,10 @@ export function ClosingSections({
 }) {
   return (
     <>
-      <section id="download" className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-20">
+      <section
+        id="download"
+        className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-20"
+      >
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
           <article className="space-y-4 sm:space-y-5">
             <h2 className="text-balance font-medium text-2xl text-foreground tracking-tight sm:text-4xl lg:text-5xl">
@@ -40,12 +43,20 @@ export function ClosingSections({
               />
               <div className="flex flex-col gap-3">
                 <div className="relative">
-                  <ButtonLink className="w-full justify-center" href={downloadUrl}>
+                  <ButtonLink
+                    className="w-full justify-center"
+                    href={downloadUrl}
+                  >
                     Download for macOS
                   </ButtonLink>
                   <FreeBadge />
                 </div>
-                <ButtonLink className="w-full justify-center" href={repoUrl} variant="secondary" external>
+                <ButtonLink
+                  className="w-full justify-center"
+                  href={repoUrl}
+                  variant="secondary"
+                  external
+                >
                   View on GitHub
                 </ButtonLink>
               </div>
@@ -68,7 +79,7 @@ export function ClosingSections({
                     <span className="font-medium text-foreground">
                       Open Anyway
                     </span>
-                    . A signed build comming soon.
+                    . A signed build coming soon.
                   </p>
                 </div>
               </aside>
