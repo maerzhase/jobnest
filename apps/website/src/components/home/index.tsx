@@ -5,9 +5,10 @@ import { HeroSection } from "./hero-section";
 import { AmbientBackground } from "./shared";
 import { SiteHeader } from "./site-header";
 import { StorySection } from "./story-section";
+import { MAC_DOWNLOAD_URL, REPOSITORY_URL } from "../../lib/site";
 
-export const REPO_URL = "https://github.com/maerzhase/jobnest";
-export const DOWNLOAD_URL = "/api/download/mac";
+export const REPO_URL = REPOSITORY_URL;
+export const DOWNLOAD_URL = MAC_DOWNLOAD_URL;
 
 const storySections = [
   {
@@ -27,8 +28,7 @@ const storySections = [
   {
     title: "Export your search as a report.",
     body: "Pick what to include, filter your applications, and download a clean report whenever you need it.",
-    detail:
-      "A clean, shareable file — ready when it matters.",
+    detail: "A clean, shareable file — ready when it matters.",
     image: "mock-04",
   },
 ] as const;

@@ -34,23 +34,32 @@ export function AmbientBackground() {
   );
 }
 
-export function ExternalButton({
+export function ButtonLink({
   children,
   className,
+  external,
   href,
+  rel,
+  target,
   variant,
 }: {
   children: React.ReactNode;
   className?: string;
+  external?: boolean;
   href: string;
+  rel?: string;
+  target?: string;
   variant?: React.ComponentProps<typeof Button>["variant"];
 }) {
+  const resolvedTarget = target ?? (external ? "_blank" : undefined);
+  const resolvedRel = rel ?? (resolvedTarget === "_blank" ? "noreferrer" : undefined);
+
   return (
     <Button
       className={className}
       nativeButton={false}
       // biome-ignore lint/a11y/useAnchorContent: base-ui render prop projects the Button's children
-      render={<a href={href} rel="noreferrer" target="_blank" />}
+      render={<a href={href} rel={resolvedRel} target={resolvedTarget} />}
       variant={variant}
     >
       {children}

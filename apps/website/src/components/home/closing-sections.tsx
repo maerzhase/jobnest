@@ -1,7 +1,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import Image from "next/image";
-import iconImage from "../../assets/home/icon.webp";
-import { ExternalButton, FreeBadge, GitHubIcon } from "./shared";
+import iconImage from "../../assets/home/icon.png";
+import { ButtonLink, FreeBadge, GitHubIcon } from "./shared";
 
 export function ClosingSections({
   downloadUrl,
@@ -12,7 +12,10 @@ export function ClosingSections({
 }) {
   return (
     <>
-      <section id="download" className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-20">
+      <section
+        id="download"
+        className="mx-auto max-w-6xl px-4 py-14 sm:px-8 sm:py-20"
+      >
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
           <article className="space-y-4 sm:space-y-5">
             <h2 className="text-balance font-medium text-2xl text-foreground tracking-tight sm:text-4xl lg:text-5xl">
@@ -40,14 +43,22 @@ export function ClosingSections({
               />
               <div className="flex flex-col gap-3">
                 <div className="relative">
-                  <ExternalButton className="w-full justify-center" href={downloadUrl}>
+                  <ButtonLink
+                    className="w-full justify-center"
+                    href={downloadUrl}
+                  >
                     Download for macOS
-                  </ExternalButton>
+                  </ButtonLink>
                   <FreeBadge />
                 </div>
-                <ExternalButton className="w-full justify-center" href={repoUrl} variant="secondary">
+                <ButtonLink
+                  className="w-full justify-center"
+                  href={repoUrl}
+                  variant="secondary"
+                  external
+                >
                   View on GitHub
-                </ExternalButton>
+                </ButtonLink>
               </div>
 
               <hr className="border-border/50" />
@@ -59,11 +70,7 @@ export function ClosingSections({
                   size={14}
                 />
                 <div>
-                  <p className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    A small note
-                  </p>
-                  <p className="pt-1.5 font-light text-muted-foreground text-xs leading-relaxed">
-                    JobNest ships without an Apple developer signature for now.
+                  <p className="font-light text-muted-foreground text-xs leading-relaxed">
                     On first launch go to{" "}
                     <span className="font-medium text-foreground">
                       System Settings → Privacy &amp; Security
@@ -72,7 +79,7 @@ export function ClosingSections({
                     <span className="font-medium text-foreground">
                       Open Anyway
                     </span>
-                    . A signed build is on the way.
+                    . A signed build coming soon.
                   </p>
                 </div>
               </aside>
