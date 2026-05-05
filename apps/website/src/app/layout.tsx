@@ -1,17 +1,56 @@
-import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { ThemeProvider } from "../components/theme-provider";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "JobNest — Track your job search, privately.",
-  description:
-    "A privacy-first job application tracker that keeps your data local.",
+  metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
+  title: {
+    default: "Private Job Application Tracker for macOS | JobNest",
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "job application tracker",
+    "job search tracker",
+    "private job tracker",
+    "local-first job tracker",
+    "macOS job application tracker",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Private Job Application Tracker for macOS | JobNest",
+    description: SITE_DESCRIPTION,
+    url: "/",
+    siteName: SITE_NAME,
+    type: "website",
+    images: [
+      {
+        url: "/icon.png",
+        width: 256,
+        height: 256,
+        alt: "JobNest app icon",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Private Job Application Tracker for macOS | JobNest",
+    description: SITE_DESCRIPTION,
+    images: ["/icon.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
-    apple: "/icon-256.png",
+    apple: "/icon.png",
     icon: [
-      { rel: "icon", type: "image/png", url: "/icon-256.png" },
-      { rel: "shortcut icon", url: "/icon-256.png" },
+      { rel: "icon", type: "image/png", url: "/icon.png" },
+      { rel: "shortcut icon", url: "/icon.png" },
     ],
   },
 };
@@ -25,7 +64,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
-        <Analytics />
       </body>
     </html>
   );
