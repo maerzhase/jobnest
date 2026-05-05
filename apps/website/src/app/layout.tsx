@@ -1,4 +1,3 @@
-import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { ThemeProvider } from "../components/theme-provider";
 import "./globals.css";
@@ -8,10 +7,10 @@ export const metadata: Metadata = {
   description:
     "A privacy-first job application tracker that keeps your data local.",
   icons: {
-    apple: "/icon-256.png",
+    apple: "/icon.png",
     icon: [
-      { rel: "icon", type: "image/png", url: "/icon-256.png" },
-      { rel: "shortcut icon", url: "/icon-256.png" },
+      { rel: "icon", type: "image/png", url: "/icon.png" },
+      { rel: "shortcut icon", url: "/icon.png" },
     ],
   },
 };
@@ -25,7 +24,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
-        <Analytics />
       </body>
     </html>
   );

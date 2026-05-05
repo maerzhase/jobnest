@@ -1,5 +1,5 @@
 import { ScreenshotFrame } from "./screenshot-frame";
-import { FreeBadge, ExternalButton } from "./shared";
+import { ButtonLink, FreeBadge } from "./shared";
 
 export function HeroSection({ downloadUrl }: { downloadUrl: string }) {
   return (
@@ -14,9 +14,9 @@ export function HeroSection({ downloadUrl }: { downloadUrl: string }) {
             device — no account, no cloud, no tracking.
           </p>
           <div className="relative w-full shrink-0 sm:w-auto">
-            <ExternalButton className="w-full justify-center sm:w-auto" href={downloadUrl}>
+            <ButtonLink className="w-full justify-center sm:w-auto" href={downloadUrl}>
               Download for macOS
-            </ExternalButton>
+            </ButtonLink>
             <FreeBadge />
           </div>
         </div>

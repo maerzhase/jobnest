@@ -1,4 +1,3 @@
-import { track } from "@vercel/analytics/server";
 import { type NextRequest, NextResponse } from "next/server";
 
 const REPO = "maerzhase/jobnest";
@@ -38,12 +37,6 @@ export async function GET(_request: NextRequest) {
 
   const release = (await res.json()) as GitHubRelease;
   const asset = pickMacAsset(release.assets);
-
-  await track("Download", {
-    platform: "mac",
-    version: release.tag_name,
-    asset: asset?.name ?? "unknown",
-  });
 
   return NextResponse.redirect(
     asset?.browser_download_url ?? RELEASES_PAGE,
