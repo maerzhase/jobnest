@@ -1,5 +1,12 @@
 # website
 
+## 0.1.1
+
+### Patch Changes
+
+- cf051c7: Improve website search metadata, crawler hints, and homepage keyword clarity.
+- 5aeab1a: Add a dedicated download page that starts the macOS installer automatically and keeps download tracking compatible with simple page-view analytics.
+
 ## 0.1.0
 
 ### Minor Changes
