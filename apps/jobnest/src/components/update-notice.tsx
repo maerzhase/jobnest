@@ -31,9 +31,8 @@ function isProbablyOnline(): boolean {
 }
 
 export function UpdateNotice() {
-  const [availableUpdate, setAvailableUpdate] = useState<AvailableUpdate | null>(
-    DEV_MOCK_UPDATE,
-  );
+  const [availableUpdate, setAvailableUpdate] =
+    useState<AvailableUpdate | null>(DEV_MOCK_UPDATE);
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   const [isInstalling, setIsInstalling] = useState(false);
   const isCheckingRef = useRef(false);
@@ -98,7 +97,7 @@ export function UpdateNotice() {
       window.removeEventListener("focus", handleWindowFocus);
       window.removeEventListener("online", handleOnline);
     };
-  }, [runSilentCheck]);
+  }, []);
 
   const visibleUpdate =
     availableUpdate && availableUpdate.version !== dismissedVersion
@@ -136,7 +135,9 @@ export function UpdateNotice() {
             setIsInstalling(true);
 
             try {
-              await executeLocalApiCall(() => commands.runInteractiveUpdateCheck());
+              await executeLocalApiCall(() =>
+                commands.runInteractiveUpdateCheck(),
+              );
             } catch (error) {
               showErrorToast({
                 title: "Unable to start update",
