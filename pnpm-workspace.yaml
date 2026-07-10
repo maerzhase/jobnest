@@ -9,12 +9,13 @@ trustPolicyIgnoreAfter: 43200
 blockExoticSubdeps: true
 strictDepBuilds: true
 
-# These packages ship platform-specific binaries and work without their fallback
-# install hooks in this workspace. Keep the hooks disabled explicitly.
-allowBuilds:
-  "@parcel/watcher": false
-  esbuild: false
-  sharp: false
+# Sharp is pulled in by Next.js and needs its install hook to select the
+# platform-specific native package. Keep other native helper hooks disabled.
+onlyBuiltDependencies:
+  - sharp
+ignoredBuiltDependencies:
+  - "@parcel/watcher"
+  - esbuild
 
 # Next.js 16.2.10 still pins a vulnerable PostCSS patch release.
 overrides:
