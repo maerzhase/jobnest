@@ -3,21 +3,21 @@
   "version": "0.1.0",
   "dependencies": {
     "@jobnest/ui": "workspace:*",
-    "@tabler/icons-react": "^3.41.1",
+    "@tabler/icons-react": "^3.44.0",
     "@vercel/analytics": "2.0.1",
-    "next": "16.2.1",
+    "next": "16.2.10",
     "next-themes": "^0.4.6",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.2.1",
-    "@tsconfig/next": "2.0.0",
-    "@types/node": "22.14.1",
-    "@types/react": "19.2.2",
+    "@tailwindcss/postcss": "4.3.2",
+    "@tsconfig/next": "2.0.6",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "tailwindcss": "4.2.1",
-    "typescript": "5.9.2"
+    "tailwindcss": "4.3.2",
+    "typescript": "5.9.3"
   },
   "private": true,
   "scripts": {

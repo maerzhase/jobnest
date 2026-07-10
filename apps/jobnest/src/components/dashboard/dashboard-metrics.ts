@@ -40,6 +40,7 @@ export type SourceMetric = {
 };
 
 export type RecentActivityMetric = {
+  key: string;
   label: string;
   count: number;
 };
@@ -65,31 +66,31 @@ export function buildDashboardMetrics(
   groups: ApplicationStatusGroup[],
   history: ApplicationHistoryEvent[],
   now = new Date(),
-  staleApplicationDays = 14
+  staleApplicationDays = 14,
 ): DashboardMetrics {
   const applications = groups.flatMap((group) => group.applications);
   const totalApplications = applications.length;
   const activeApplications = applications.filter(
     (application) =>
       ACTIVE_STATUSES.has(application.status as ApplicationStatus) &&
-      application.archivedAt === null
+      application.archivedAt === null,
   ).length;
   const archivedApplications = applications.filter(
-    (application) => application.archivedAt !== null
+    (application) => application.archivedAt !== null,
   ).length;
   const staleApplications = applications.filter((application) =>
-    isStaleApplication(application, staleApplicationDays, now)
+    isStaleApplication(application, staleApplicationDays, now),
   ).length;
 
   const lifecycleByApplication = groupHistoryByApplication(history);
   const applicationsThatReachedInterview = applications.filter((application) =>
-    hasReachedStatus(application, lifecycleByApplication, "interview")
+    hasReachedStatus(application, lifecycleByApplication, "interview"),
   ).length;
   const applicationsThatReachedOffer = applications.filter((application) =>
-    hasReachedStatus(application, lifecycleByApplication, "offer")
+    hasReachedStatus(application, lifecycleByApplication, "offer"),
   ).length;
   const rejectedApplications = applications.filter((application) =>
-    hasReachedStatus(application, lifecycleByApplication, "rejected")
+    hasReachedStatus(application, lifecycleByApplication, "rejected"),
   ).length;
 
   return {
@@ -103,12 +104,12 @@ export function buildDashboardMetrics(
     averageDaysToInterview: getAverageDaysToStatus(
       applications,
       lifecycleByApplication,
-      "interview"
+      "interview",
     ),
     averageDaysToOffer: getAverageDaysToStatus(
       applications,
       lifecycleByApplication,
-      "offer"
+      "offer",
     ),
     statusBreakdown: buildStatusBreakdown(applications),
     weeklyApplications: buildWeeklyApplications(history, now),
@@ -119,13 +120,13 @@ export function buildDashboardMetrics(
 }
 
 function buildStatusBreakdown(
-  applications: ApplicationListItem[]
+  applications: ApplicationListItem[],
 ): StatusMetric[] {
   const total = applications.length;
 
   return STATUS_OPTIONS.map((statusOption) => {
     const count = applications.filter(
-      (application) => application.status === statusOption.value
+      (application) => application.status === statusOption.value,
     ).length;
 
     return {
@@ -139,7 +140,7 @@ function buildStatusBreakdown(
 
 function buildWeeklyApplications(
   history: ApplicationHistoryEvent[],
-  now: Date
+  now: Date,
 ): WeeklyBucket[] {
   const currentWeekStart = getStartOfWeek(now);
   const buckets = Array.from({ length: 8 }, (_, index) => {
@@ -167,7 +168,9 @@ function buildWeeklyApplications(
     }
 
     const weekStart = getStartOfWeek(occurredAt).getTime();
-    const bucket = buckets.find((candidate) => candidate.date.getTime() === weekStart);
+    const bucket = buckets.find(
+      (candidate) => candidate.date.getTime() === weekStart,
+    );
 
     if (bucket) {
       bucket.count += 1;
@@ -179,9 +182,11 @@ function buildWeeklyApplications(
 
 function buildRecentActivity(
   history: ApplicationHistoryEvent[],
-  now: Date
+  now: Date,
 ): RecentActivityMetric[] {
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
   start.setUTCDate(start.getUTCDate() - 13);
 
   const buckets = Array.from({ length: 14 }, (_, index) => {
@@ -204,22 +209,22 @@ function buildRecentActivity(
     }
   }
 
-  return buckets.map(({ label, count }) => ({ label, count }));
+  return buckets.map(({ key, label, count }) => ({ key, label, count }));
 }
 
 function buildSourceBreakdown(
   applications: ApplicationListItem[],
-  lifecycleByApplication: Map<string, ApplicationHistoryEvent[]>
+  lifecycleByApplication: Map<string, ApplicationHistoryEvent[]>,
 ): SourceMetric[] {
   return APPLICATION_SOURCE_OPTIONS.map((sourceOption) => {
     const sourceApplications = applications.filter(
-      (application) => application.applicationSource === sourceOption.value
+      (application) => application.applicationSource === sourceOption.value,
     );
     const interviews = sourceApplications.filter((application) =>
-      hasReachedStatus(application, lifecycleByApplication, "interview")
+      hasReachedStatus(application, lifecycleByApplication, "interview"),
     ).length;
     const offers = sourceApplications.filter((application) =>
-      hasReachedStatus(application, lifecycleByApplication, "offer")
+      hasReachedStatus(application, lifecycleByApplication, "offer"),
     ).length;
 
     return {
@@ -234,7 +239,7 @@ function buildSourceBreakdown(
 }
 
 function groupHistoryByApplication(
-  history: ApplicationHistoryEvent[]
+  history: ApplicationHistoryEvent[],
 ): Map<string, ApplicationHistoryEvent[]> {
   const map = new Map<string, ApplicationHistoryEvent[]>();
 
@@ -247,7 +252,8 @@ function groupHistoryByApplication(
   for (const events of map.values()) {
     events.sort(
       (left, right) =>
-        new Date(left.occurredAt).getTime() - new Date(right.occurredAt).getTime()
+        new Date(left.occurredAt).getTime() -
+        new Date(right.occurredAt).getTime(),
     );
   }
 
@@ -257,7 +263,7 @@ function groupHistoryByApplication(
 function hasReachedStatus(
   application: ApplicationListItem,
   lifecycleByApplication: Map<string, ApplicationHistoryEvent[]>,
-  status: ApplicationStatus
+  status: ApplicationStatus,
 ): boolean {
   if (application.status === status) {
     return true;
@@ -266,27 +272,25 @@ function hasReachedStatus(
   const history = lifecycleByApplication.get(application.id) ?? [];
 
   return history.some(
-    (event) =>
-      event.statusTo === status ||
-      event.snapshot?.status === status
+    (event) => event.statusTo === status || event.snapshot?.status === status,
   );
 }
 
 function getAverageDaysToStatus(
   applications: ApplicationListItem[],
   lifecycleByApplication: Map<string, ApplicationHistoryEvent[]>,
-  status: ApplicationStatus
+  status: ApplicationStatus,
 ): number | null {
   const durations = applications
     .map((application) => {
       const reachedAt = getStatusReachedAt(
         application,
         lifecycleByApplication.get(application.id) ?? [],
-        status
+        status,
       );
       const startedAt = getApplicationStartDate(
         application,
-        lifecycleByApplication.get(application.id) ?? []
+        lifecycleByApplication.get(application.id) ?? [],
       );
 
       if (!reachedAt || !startedAt) {
@@ -294,7 +298,7 @@ function getAverageDaysToStatus(
       }
 
       const duration = Math.round(
-        (reachedAt.getTime() - startedAt.getTime()) / DAY_MS
+        (reachedAt.getTime() - startedAt.getTime()) / DAY_MS,
       );
 
       return duration >= 0 ? duration : null;
@@ -306,13 +310,13 @@ function getAverageDaysToStatus(
   }
 
   return Math.round(
-    durations.reduce((sum, duration) => sum + duration, 0) / durations.length
+    durations.reduce((sum, duration) => sum + duration, 0) / durations.length,
   );
 }
 
 function getApplicationStartDate(
   application: ApplicationListItem,
-  history: ApplicationHistoryEvent[]
+  history: ApplicationHistoryEvent[],
 ): Date | null {
   const appliedAt = toDate(application.appliedAt);
   if (appliedAt) {
@@ -326,7 +330,7 @@ function getApplicationStartDate(
 function getStatusReachedAt(
   application: ApplicationListItem,
   history: ApplicationHistoryEvent[],
-  status: ApplicationStatus
+  status: ApplicationStatus,
 ): Date | null {
   if (application.status === status) {
     const matchingEvent = history.find((event) => event.statusTo === status);
@@ -349,7 +353,7 @@ function getRate(count: number, total: number): number {
 
 function getStartOfWeek(date: Date): Date {
   const normalized = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
   );
   const day = normalized.getUTCDay();
   const diff = day === 0 ? -6 : 1 - day;

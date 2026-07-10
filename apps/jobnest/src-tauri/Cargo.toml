@@ -28,7 +28,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 specta = { version = "2.0.0-rc.24", features = ["chrono", "function", "uuid"] }
 specta-typescript = "0.0.11"
-sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio-rustls", "chrono", "uuid", "macros"] }
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio-rustls", "chrono", "uuid", "macros", "migrate"] }
 tauri-specta = { version = "2.0.0-rc.24", features = ["typescript"] }
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
