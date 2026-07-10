@@ -14,8 +14,13 @@ export function TrendBarChart({ data }: { data: WeeklyBucket[] }) {
     <div className="grid gap-3">
       <div className="flex h-52 items-end gap-2">
         {data.map((item) => (
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={item.label}>
-            <span className="text-[11px] text-muted-foreground">{item.count}</span>
+          <div
+            className="flex min-w-0 flex-1 flex-col items-center gap-2"
+            key={item.label}
+          >
+            <span className="text-[11px] text-muted-foreground">
+              {item.count}
+            </span>
             <DashboardInset className="relative flex h-40 w-full items-end overflow-hidden">
               <div
                 className="w-full rounded-t-lg bg-[linear-gradient(180deg,color-mix(in_srgb,var(--foreground)_16%,transparent),color-mix(in_srgb,var(--foreground)_64%,transparent))] transition-[height]"
@@ -24,7 +29,9 @@ export function TrendBarChart({ data }: { data: WeeklyBucket[] }) {
                 }}
               />
             </DashboardInset>
-            <span className="text-[11px] text-muted-foreground">{item.label}</span>
+            <span className="text-[11px] text-muted-foreground">
+              {item.label}
+            </span>
           </div>
         ))}
       </div>
@@ -38,8 +45,11 @@ export function SparkBarChart({ data }: { data: RecentActivityMetric[] }) {
   return (
     <div className="grid gap-3">
       <div className="flex h-44 items-end gap-2">
-        {data.map((item, index) => (
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={`${item.label}-${index}`}>
+        {data.map((item) => (
+          <div
+            className="flex min-w-0 flex-1 flex-col items-center gap-2"
+            key={item.key}
+          >
             <DashboardInset className="flex h-32 w-full items-end overflow-hidden">
               <div
                 className="w-full rounded-md bg-[linear-gradient(180deg,rgba(34,197,94,0.24),rgba(34,197,94,0.76))]"
@@ -48,7 +58,9 @@ export function SparkBarChart({ data }: { data: RecentActivityMetric[] }) {
                 }}
               />
             </DashboardInset>
-            <span className="text-[11px] text-muted-foreground">{item.label}</span>
+            <span className="text-[11px] text-muted-foreground">
+              {item.label}
+            </span>
           </div>
         ))}
       </div>
@@ -72,7 +84,9 @@ export function StatusBreakdownChart({ data }: { data: StatusMetric[] }) {
                 <ApplicationStatusBadge status={item.status} />
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{item.count}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {item.count}
+                </p>
                 <p className="text-xs text-muted-foreground">{item.share}%</p>
               </div>
             </DashboardInset>
@@ -101,8 +115,18 @@ function StatusDonutChart({ data }: { data: StatusMetric[] }) {
         color: getStatusColor(item.status),
         endCap: getArcPoint(60, 60, (innerRadius + outerRadius) / 2, endAngle),
         maskId: `${id}-${item.status}`,
-        path: describeDonutSegment(startAngle, endAngle, innerRadius, outerRadius),
-        startCap: getArcPoint(60, 60, (innerRadius + outerRadius) / 2, startAngle),
+        path: describeDonutSegment(
+          startAngle,
+          endAngle,
+          innerRadius,
+          outerRadius,
+        ),
+        startCap: getArcPoint(
+          60,
+          60,
+          (innerRadius + outerRadius) / 2,
+          startAngle,
+        ),
         status: item.status,
       };
     });
@@ -110,10 +134,21 @@ function StatusDonutChart({ data }: { data: StatusMetric[] }) {
   return (
     <div className="mx-auto flex w-full max-w-[13rem] flex-col items-center justify-center gap-3">
       <svg aria-hidden="true" className="h-44 w-44" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r="44" fill="none" stroke="var(--muted)" strokeWidth="14" />
+        <circle
+          cx="60"
+          cy="60"
+          r="44"
+          fill="none"
+          stroke="var(--muted)"
+          strokeWidth="14"
+        />
         <defs>
           {segments.map((segment) => (
-            <mask id={segment.maskId} key={segment.maskId} maskUnits="userSpaceOnUse">
+            <mask
+              id={segment.maskId}
+              key={segment.maskId}
+              maskUnits="userSpaceOnUse"
+            >
               <rect width="120" height="120" fill="black" />
               <path d={segment.path} fill="white" fillRule="evenodd" />
               <circle
@@ -142,7 +177,9 @@ function StatusDonutChart({ data }: { data: StatusMetric[] }) {
         ))}
       </svg>
       <div className="text-center">
-        <p className="text-3xl font-semibold tracking-tight text-foreground">{total}</p>
+        <p className="text-3xl font-semibold tracking-tight text-foreground">
+          {total}
+        </p>
         <p className="text-sm text-muted-foreground">tracked applications</p>
       </div>
     </div>
@@ -180,7 +217,7 @@ function describeDonutSegment(
   startAngle: number,
   endAngle: number,
   innerRadius: number,
-  outerRadius: number
+  outerRadius: number,
 ): string {
   if (endAngle - startAngle >= 359.999) {
     return [
@@ -208,7 +245,7 @@ function describeCircle(
   cx: number,
   cy: number,
   radius: number,
-  reverse = false
+  reverse = false,
 ): string {
   const sweepFlag = reverse ? 0 : 1;
 

@@ -2,10 +2,10 @@
   "name": "monorepo-template",
   "version": "0.0.0",
   "devDependencies": {
-    "@biomejs/biome": "2.2.0",
-    "@changesets/cli": "2.30.0",
-    "syncpack": "14.3.0",
-    "turbo": "2.9.5"
+    "@biomejs/biome": "2.5.3",
+    "@changesets/cli": "2.31.0",
+    "syncpack": "15.3.2",
+    "turbo": "2.10.4"
   },
   "engines": {
     "node": ">=20"

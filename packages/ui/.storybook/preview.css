@@ -15,7 +15,8 @@ html.dark {
       circle at bottom right,
       rgb(255 255 255 / 0.04),
       transparent 26%
-    ), linear-gradient(180deg, #050505 0%, #000000 100%);
+    ),
+    linear-gradient(180deg, #050505 0%, #000000 100%);
   --story-fg: #ffffff;
 }
 

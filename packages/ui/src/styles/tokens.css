@@ -45,7 +45,8 @@
           circle at bottom right,
           rgb(255 255 255 / 0.04),
           transparent 24%
-        ), linear-gradient(180deg, #090909 0%, #111111 42%, #080808 100%);
+        ),
+        linear-gradient(180deg, #090909 0%, #111111 42%, #080808 100%);
       color-scheme: dark;
     }
   }
