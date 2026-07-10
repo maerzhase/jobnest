@@ -1,6 +1,6 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
-import * as XLSX from "xlsx";
+import writeXlsxFile from "write-excel-file/browser";
 import type { ApplicationListItem } from "./api/applications";
 import { formatDate } from "./date";
 
@@ -48,6 +48,29 @@ function toRows(
   });
 }
 
+function toTable(
+  applications: ApplicationListItem[],
+  columns: Set<ExportColumn>,
+): string[][] {
+  const headers = EXPORT_COLUMNS.filter(({ key }) => columns.has(key)).map(
+    ({ label }) => label,
+  );
+  const rows = toRows(applications, columns);
+
+  return [
+    headers,
+    ...rows.map((row) => headers.map((header) => row[header] ?? "")),
+  ];
+}
+
+function escapeCsvCell(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function toCsv(table: string[][]): string {
+  return table.map((row) => row.map(escapeCsvCell).join(",")).join("\r\n");
+}
+
 function buildTimestamp(): string {
   const now = new Date();
   return [
@@ -68,9 +91,7 @@ export async function exportCsv(
 
   if (!filePath) return "cancelled";
 
-  const rows = toRows(applications, columns);
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  const csv = XLSX.utils.sheet_to_csv(worksheet);
+  const csv = toCsv(toTable(applications, columns));
   await writeFile(filePath, new TextEncoder().encode(csv));
 
   return "saved";
@@ -87,15 +108,12 @@ export async function exportXls(
 
   if (!filePath) return "cancelled";
 
-  const rows = toRows(applications, columns);
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Applications");
-
-  const buffer = XLSX.write(workbook, {
-    type: "array",
-    bookType: "xlsx",
-  }) as ArrayBuffer;
+  const table = toTable(applications, columns).map((row) =>
+    row.map((value) => ({ value, type: String })),
+  );
+  const workbook = writeXlsxFile(table, { sheet: "Applications" });
+  const blob = await workbook.toBlob();
+  const buffer = await blob.arrayBuffer();
   await writeFile(filePath, new Uint8Array(buffer));
 
   return "saved";

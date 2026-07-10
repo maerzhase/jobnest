@@ -1,3 +1,21 @@
 packages:
   - "packages/*"
   - "apps/*"
+
+# Supply-chain guardrails for all future dependency resolutions and installs.
+minimumReleaseAge: 720
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 43200
+blockExoticSubdeps: true
+strictDepBuilds: true
+
+# These packages ship platform-specific binaries and work without their fallback
+# install hooks in this workspace. Keep the hooks disabled explicitly.
+allowBuilds:
+  "@parcel/watcher": false
+  esbuild: false
+  sharp: false
+
+# Next.js 16.2.10 still pins a vulnerable PostCSS patch release.
+overrides:
+  "next@16.2.10>postcss": 8.5.16
